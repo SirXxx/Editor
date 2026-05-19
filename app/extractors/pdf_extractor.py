@@ -57,18 +57,19 @@ class PDFExtractor:
             # 导出图片
             for img_index, img in enumerate(page.get_images(full=True), start=1):
                 xref = img[0]
-                pix = fitz.Pixmap(doc, xref)
-                img_dir = pdf_file.parent / "_extracted_images"
-                img_dir.mkdir(exist_ok=True)
-                img_path = img_dir / f"{pdf_file.stem}_p{page_index}_{img_index}.png"
-                if pix.n - pix.alpha < 4:
+                try:
+                    pix = fitz.Pixmap(doc, xref)
+                    img_dir = pdf_file.parent / "_extracted_images"
+                    img_dir.mkdir(exist_ok=True)
+                    img_path = img_dir / f"{pdf_file.stem}_p{page_index}_{img_index}.png"
+                    # PNG 只支持灰度(n=1)或 RGB(n=3)，其余一律转 RGB
+                    if pix.colorspace is None or pix.colorspace.n not in (1, 3):
+                        pix = fitz.Pixmap(fitz.csRGB, pix)
                     pix.save(str(img_path))
-                else:
-                    rgb_pix = fitz.Pixmap(fitz.csRGB, pix)
-                    rgb_pix.save(str(img_path))
-                    rgb_pix = None
-                pix = None
-                result.images.append(ExtractedImage(page=page_index, index=img_index, path=str(img_path)))
+                    pix = None
+                    result.images.append(ExtractedImage(page=page_index, index=img_index, path=str(img_path)))
+                except Exception:
+                    pix = None  # 跳过无法提取的图片，不中断整体流程
 
             # 表格识别占位：后续可替换为专门表格引擎
             text = page.get_text().strip()

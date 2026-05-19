@@ -32,7 +32,7 @@ for d in [INPUT_DIR, OUTPUT_DIR, WORKSPACE_DIR]:
 app = FastAPI(title="AI Editor Review System")
 app.mount("/static", StaticFiles(directory=str(UI_DIR)), name="static")
 
-config = AppConfig()
+config = AppConfig.load()
 kb_manager = KnowledgeBaseManager(base_dir=str(DATA_DIR / "kb"), config=config)
 
 TASKS: Dict[str, Dict[str, Any]] = {}
