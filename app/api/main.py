@@ -204,6 +204,21 @@ def list_tasks() -> Dict[str, Any]:
         return {"ok": True, "tasks": [_public_task(t) for t in items[:50]]}
 
 
+@app.post("/tasks/{task_id}/cancel")
+def cancel_task(task_id: str) -> Dict[str, Any]:
+    with TASK_LOCK:
+        task = TASKS.get(task_id)
+        if not task:
+            return {"ok": False, "message": "任务不存在"}
+        if task["status"] in ("completed", "failed", "cancelled"):
+            return {"ok": False, "message": "任务已结束"}
+        task["cancelled"] = True
+        task["status"] = "cancelled"
+        task["message"] = "任务已取消"
+        task["updated_at"] = datetime.now().isoformat()
+    return {"ok": True, "message": "任务已取消"}
+
+
 @app.get("/tasks/{task_id}/export_docx")
 def export_task_docx(task_id: str):
     with TASK_LOCK:
@@ -249,6 +264,11 @@ def _update_task(task_id: str, **kwargs: Any) -> None:
         task["updated_at"] = datetime.now().isoformat()
 
 
+def _is_cancelled(task_id: str) -> bool:
+    with TASK_LOCK:
+        return bool(TASKS.get(task_id, {}).get("cancelled"))
+
+
 def _run_review_task_sync(
     task_id: str,
     input_path: str,
@@ -261,11 +281,17 @@ def _run_review_task_sync(
 ) -> None:
     try:
         _update_task(task_id, status="running", progress=10, message="任务开始执行")
+        if _is_cancelled(task_id):
+            return
         if file_type == ".pdf":
             _update_task(task_id, progress=25, message="正在解析 PDF / OCR")
         else:
             _update_task(task_id, progress=25, message="正在解析 Word 文档")
+        if _is_cancelled(task_id):
+            return
         result = _run_review_from_path(input_path, file_name, file_type, kb_category, scan_mode, export_markdown, export_csv, task_id)
+        if _is_cancelled(task_id):
+            return
         _update_task(task_id, status="completed", progress=100, message="审稿完成", result=result)
     except Exception as e:
         _update_task(task_id, status="failed", progress=100, message="任务失败", error=str(e))
