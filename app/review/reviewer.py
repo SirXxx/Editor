@@ -87,18 +87,75 @@ class Reviewer:
             references=parsed.get('references', [])
         )
 
+    def _split_chunks(self, text: str, chunk_size: int = 3000) -> list:
+        """按段落将文本分割为多个处理块."""
+        paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
+        if not paragraphs:
+            return [text] if text.strip() else ['']
+        chunks, current, current_len = [], [], 0
+        for para in paragraphs:
+            if current_len + len(para) > chunk_size and current:
+                chunks.append('\n'.join(current))
+                current, current_len = [para], len(para)
+            else:
+                current.append(para)
+                current_len += len(para)
+        if current:
+            chunks.append('\n'.join(current))
+        return chunks or [text]
+
+    def review_text_chunked(
+        self,
+        text: str,
+        kb_category: Optional[str] = None,
+        chunk_size: int = 3000,
+        on_progress=None,
+    ) -> "ReviewResult":
+        """分段审稿。每段完成后回调 on_progress(chunk_idx, total, partial_issues)。"""
+        chunks = self._split_chunks(text, chunk_size)
+        if not chunks:
+            return ReviewResult(source_file="", summary="文档内容为空", revised_text="", issues=[], references=[])
+        all_issues, all_summaries, all_revised = [], [], []
+        for i, chunk in enumerate(chunks):
+            ref_text = self._search_refs(chunk, kb_category)
+            try:
+                chunk_result = self._call_llm(chunk, ref_text)
+                all_issues.extend(chunk_result.issues)
+                if chunk_result.summary:
+                    all_summaries.append(chunk_result.summary)
+                if chunk_result.revised_text:
+                    all_revised.append(chunk_result.revised_text)
+            except Exception as e:
+                # 单段失败时记录错误信息，不中断整体审稿
+                all_summaries.append(f"【第{i+1}段处理失败：{e}】")
+            if on_progress:
+                on_progress(i + 1, len(chunks), list(all_issues))  # 可能抛出 TaskCancelledException
+        return ReviewResult(
+            source_file="",
+            summary="；".join(all_summaries) if all_summaries else "审稿完成",
+            revised_text="\n\n---\n\n".join(all_revised),
+            issues=all_issues,
+            references=[],
+        )
+
     def review_text(self, text: str, kb_category: Optional[str] = None) -> ReviewResult:
         """审稿纯文本内容。"""
         ref_text = self._search_refs(text, kb_category)
         return self._call_llm(text, ref_text)
 
-    def review_pdf(self, file_path: str, kb_category: Optional[str] = None, scan_mode: bool = False) -> ReviewResult:
-        """提取 PDF 文本后审稿。"""
+    def review_pdf(
+        self,
+        file_path: str,
+        kb_category: Optional[str] = None,
+        scan_mode: bool = False,
+        on_progress=None,
+    ) -> ReviewResult:
+        """提取 PDF 文本后分段审稿。"""
         from app.extractors.pdf_extractor import PDFExtractor
         extractor = PDFExtractor()
         extraction = extractor.extract(file_path)
-        text = "\n".join([b.text for b in extraction.blocks])
-        result = self.review_text(text=text, kb_category=kb_category)
+        text = "\n".join(b.text for b in extraction.blocks if b.text.strip())
+        result = self.review_text_chunked(text=text, kb_category=kb_category, on_progress=on_progress)
         result.source_file = file_path
         return result
 

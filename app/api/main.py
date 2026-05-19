@@ -39,11 +39,16 @@ TASKS: Dict[str, Dict[str, Any]] = {}
 TASK_LOCK = Lock()
 
 
+class TaskCancelledException(Exception):
+    """任务被用户取消时抛出。"""
+
+
 class LLMConfigPayload(BaseModel):
     provider: str = "mock"
     base_url: str = ""
     api_key: str = ""
     model: str = ""
+    extra_headers: str = ""
 
 
 class EmbeddingConfigPayload(BaseModel):
@@ -89,6 +94,7 @@ def save_config(payload: LLMConfigPayload) -> Dict[str, Any]:
     config.llm.base_url = payload.base_url
     config.llm.api_key = payload.api_key
     config.llm.model = payload.model
+    config.llm.extra_headers = payload.extra_headers
     config.save()
     return {"ok": True, "message": "LLM 配置已保存", "config": config.to_dict()}
 
@@ -252,6 +258,9 @@ def _public_task(task: Dict[str, Any]) -> Dict[str, Any]:
         "scan_mode": task.get("scan_mode", False),
         "result": task.get("result"),
         "error": task.get("error"),
+        "partial_issues": task.get("partial_issues", []),
+        "chunk_index": task.get("chunk_index", 0),
+        "total_chunks": task.get("total_chunks", 1),
     }
 
 
@@ -283,16 +292,12 @@ def _run_review_task_sync(
         _update_task(task_id, status="running", progress=10, message="任务开始执行")
         if _is_cancelled(task_id):
             return
-        if file_type == ".pdf":
-            _update_task(task_id, progress=25, message="正在解析 PDF / OCR")
-        else:
-            _update_task(task_id, progress=25, message="正在解析 Word 文档")
-        if _is_cancelled(task_id):
-            return
         result = _run_review_from_path(input_path, file_name, file_type, kb_category, scan_mode, export_markdown, export_csv, task_id)
         if _is_cancelled(task_id):
             return
         _update_task(task_id, status="completed", progress=100, message="审稿完成", result=result)
+    except TaskCancelledException:
+        _update_task(task_id, status="cancelled", progress=0, message="任务已取消")
     except Exception as e:
         _update_task(task_id, status="failed", progress=100, message="任务失败", error=str(e))
 
@@ -360,21 +365,49 @@ def _run_review_from_path(
     llm = LLMProviderFactory.from_config(config)
     reviewer = Reviewer(config=config, kb_manager=kb_manager, llm=llm)
 
+    # ── 1. 文本提取 ────────────────────────────────────────
     if file_type == ".pdf":
         if task_id:
-            _update_task(task_id, progress=45, message="正在恢复 PDF 文本结构")
-            _update_task(task_id, progress=70, message="正在检索知识库并执行审稿")
-        result = reviewer.review_pdf(file_path=input_path, kb_category=kb_category or None, scan_mode=scan_mode)
+            _update_task(task_id, progress=15, message="正在解析 PDF 文本")
+        from app.extractors.pdf_extractor import PDFExtractor
+        blocks = PDFExtractor().extract(input_path).blocks
+        text = "\n".join(b.text for b in blocks if b.text.strip())
     else:
         if task_id:
-            _update_task(task_id, progress=45, message="正在提取 Word 文本与表格")
+            _update_task(task_id, progress=15, message="正在提取 Word 文本")
         text = _extract_docx_text(input_path)
+
+    if not text.strip():
+        raise ValueError("无法从文档中提取文本，请检查文件内容")
+
+    # ── 2. 分段审稿（带实时进度回调）───────────────────────
+    def on_chunk_progress(chunk_idx: int, total: int, partial_issues: list) -> None:
+        if task_id and _is_cancelled(task_id):
+            raise TaskCancelledException()
         if task_id:
-            _update_task(task_id, progress=70, message="正在检索知识库并执行 Word 审稿")
-        result = reviewer.review_text(text=text, kb_category=kb_category or None)
+            pct = 20 + int(70 * chunk_idx / total)
+            _update_task(
+                task_id,
+                progress=pct,
+                message=f"正在审稿第 {chunk_idx}/{total} 段（已发现 {len(partial_issues)} 处问题）",
+                partial_issues=[
+                    i.model_dump() if hasattr(i, "model_dump") else dict(i)
+                    for i in partial_issues
+                ],
+                chunk_index=chunk_idx,
+                total_chunks=total,
+            )
+
+    result = reviewer.review_text_chunked(
+        text=text,
+        kb_category=kb_category or None,
+        chunk_size=3000,
+        on_progress=on_chunk_progress,
+    )
+    result.source_file = input_path
 
     if task_id:
-        _update_task(task_id, progress=85, message="正在导出结果")
+        _update_task(task_id, progress=92, message="正在导出结果")
 
     exports = {}
     stem = Path(file_name).stem

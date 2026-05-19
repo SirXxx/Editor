@@ -14,6 +14,7 @@ class LLMSettings:
     base_url: str = "http://localhost:8000/v1"
     api_key: str = ""
     model: str = "gpt-4o-mini"
+    extra_headers: str = ""  # JSON 字符串，如 {"X-Application-Name": "myapp"}
 
 
 @dataclass
