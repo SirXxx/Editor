@@ -1,0 +1,24 @@
+# 默认所有文本文件自动处理换行
+* text=auto
+
+# Windows 脚本强制 CRLF
+*.bat text eol=crlf
+
+# Python / 配置文件保持 LF
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.svg text eol=lf
+*.txt text eol=lf
+
+# 二进制文件不处理
+*.pdf binary
+*.docx binary
+*.pyd binary
+*.exe binary
+*.ico binary
+*.png binary
+*.jpg binary
