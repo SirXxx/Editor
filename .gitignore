@@ -3,12 +3,25 @@
 venv/
 env/
 
+# 环境变量
+.env
+.env.*
+!.env.example
+
 # Python 编译缓存
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 *.so
+
+# Python 工具缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
 
 # 打包产物
 dist/
@@ -21,6 +34,7 @@ data/input/
 data/output/
 data/workspace/
 data/kb/
+_extracted_images/
 
 # 配置（含密钥，不提交）
 configs/settings.yaml
@@ -38,6 +52,7 @@ Desktop.ini
 
 # 日志
 *.log
+logs/
 
 # 用户上传的文档（测试数据）
 *.pdf

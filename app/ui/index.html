@@ -1,91 +1,2186 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI审稿系统 Desktop App</title>
-  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
-  <style>
-    :root{--bg:#0f172a;--bg2:#111827;--panel:#111827;--line:#243041;--text:#e5eefc;--muted:#94a3b8;--primary:#3b82f6;--primary2:#2563eb;--shadow:0 20px 50px rgba(0,0,0,.35)}
-    *{box-sizing:border-box} body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:radial-gradient(circle at top left,#1e293b,#0f172a 40%,#020617 100%);color:var(--text);height:100vh;overflow:hidden}
-    .window{width:100vw;height:100vh;display:flex;flex-direction:column}.titlebar{height:52px;background:rgba(15,23,42,.85);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 16px}
-    .win-left{display:flex;align-items:center;gap:12px}.dots{display:flex;gap:8px}.dot{width:12px;height:12px;border-radius:50%}.r{background:#ef4444}.y{background:#f59e0b}.g{background:#22c55e}.brand{font-weight:700}.brand small{color:var(--muted);margin-left:6px}
-    .title-actions{display:flex;gap:10px}.chip{padding:7px 12px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px;background:rgba(255,255,255,.03)}
-    .app{flex:1;display:grid;grid-template-columns:220px 1fr 360px;gap:14px;padding:14px;min-height:0}.sidebar,.content,.rightbar{min-height:0}
-    .sidebar,.panel{background:linear-gradient(180deg,rgba(17,24,39,.96),rgba(3,7,18,.95));border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
-    .sidebar{padding:16px;display:flex;flex-direction:column}.nav-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin:6px 0 10px}
-    .nav button,.tool-btn,.primary-btn,.secondary-btn{border:none;cursor:pointer;border-radius:16px;transition:.18s ease}.nav button{width:100%;text-align:left;padding:14px;margin-bottom:10px;background:#0b1220;color:var(--text);font-weight:700;border:1px solid #1e293b}.nav button:hover,.nav button.active{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#3b82f6}
-    .secondary-btn{width:100%;padding:13px;background:#0b1220;color:#cbd5e1;font-weight:700;border:1px solid #253246}.primary-btn{width:100%;padding:15px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;font-weight:800}
-.content{display:grid;grid-template-rows:1fr;min-height:0}.hero{background:linear-gradient(135deg,rgba(37,99,235,.95),rgba(14,165,233,.9));border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:22px;box-shadow:var(--shadow)}
-    .hero-actions,.grid2,.grid3{display:grid;gap:10px}.hero-actions{grid-template-columns:repeat(3,1fr);margin-top:16px}.grid2{grid-template-columns:1fr 1fr}.grid3{grid-template-columns:1fr 1fr 1fr}
-    .tool-btn{padding:16px;background:rgba(255,255,255,.12);color:#fff;font-weight:800;border:1px solid rgba(255,255,255,.16)} .workspace{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:0}.panel{padding:18px;overflow:auto}
-    input,select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid #314158;background:#0b1220;color:var(--text);margin:8px 0 12px}.status{padding:13px 14px;border-radius:16px;background:#0b1220;border:1px dashed #314158;color:#cbd5e1}.tag{display:inline-block;padding:6px 10px;background:#172554;border:1px solid #1d4ed8;color:#bfdbfe;border-radius:999px;margin:0 8px 8px 0;font-size:12px}
-    .wizard{display:none}.wizard.active{display:block}.rightbar{display:grid;grid-template-rows:220px 1fr 220px;gap:14px} pre{margin:0;white-space:pre-wrap;word-break:break-word;background:#020617;border:1px solid #1e293b;color:#e2e8f0;padding:14px;border-radius:16px;min-height:100px}
-    .issues{max-height:100%;overflow:auto}.issue{padding:14px;border:1px solid #263446;background:#0b1220;border-radius:16px;margin-bottom:10px}.muted{color:var(--muted)} .footerbar{height:34px;border-top:1px solid var(--line);background:rgba(15,23,42,.85);display:flex;align-items:center;justify-content:space-between;padding:0 14px;color:var(--muted);font-size:12px}
-    .dropzone{border:2px dashed #3b82f6;border-radius:20px;padding:28px;text-align:center;background:rgba(59,130,246,.08);color:#dbeafe;transition:.2s;margin-bottom:12px}.dropzone.dragover{background:rgba(59,130,246,.18);border-color:#60a5fa}
-    .progress-wrap{margin:12px 0}.progress-bar{width:100%;height:16px;background:#0b1220;border:1px solid #314158;border-radius:999px;overflow:hidden}.progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#3b82f6);transition:width .25s ease}.progress-text{margin-top:8px;color:#cbd5e1;font-size:13px}
-    .history-list{display:flex;flex-direction:column;gap:10px}.history-item{padding:12px;border-radius:14px;background:#0b1220;border:1px solid #243446;cursor:pointer}.history-meta{font-size:12px;color:#94a3b8;margin-top:6px}
-    @media (max-width:1200px){.app{grid-template-columns:200px 1fr}.rightbar{display:none}} @media (max-width:860px){body{overflow:auto}.app,.workspace,.hero-actions,.grid2,.grid3{grid-template-columns:1fr}.window{height:auto;min-height:100vh}}
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AI 专业编辑审稿</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg"/>
+<style>
+:root{
+  --bg:#080d1a;--panel:#0d1424;--panel2:#0f1929;
+  --border:#1a2a40;--text:#dde6f5;--muted:#5a7a9a;
+  --primary:#3b82f6;--primary-d:#1d4ed8;
+  --g-red:#ef4444;--g-orange:#f97316;--g-purple:#a855f7;
+  --g-cyan:#06b6d4;--g-green:#22c55e;--g-yellow:#eab308;
+  --sev-high:#ef4444;--sev-med:#f59e0b;--sev-low:#22c55e;
+  --shadow:0 8px 32px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:"Segoe UI",system-ui,sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px}
+
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;height:100vh}
+header{height:50px;background:rgba(13,20,36,.95);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 18px;flex-shrink:0}
+.brand{font-weight:800;font-size:15px;letter-spacing:.02em}
+.brand small{color:var(--muted);font-weight:400;margin-left:6px;font-size:12px}
+.header-actions{display:flex;align-items:center;gap:8px}
+.h-btn{padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;
+  color:var(--muted);cursor:pointer;font-size:12px;font-family:inherit;transition:.15s}
+.h-btn:hover{border-color:var(--primary);color:var(--text)}
+.status-chip{padding:5px 12px;border-radius:20px;background:rgba(59,130,246,.12);
+  border:1px solid rgba(59,130,246,.3);color:#93c5fd;font-size:12px}
+
+.workspace{flex:1;display:grid;grid-template-columns:2fr 1.1fr 1.6fr;gap:10px;
+  padding:10px;min-height:0;overflow:hidden}
+.pane{background:var(--panel);border:1px solid var(--border);border-radius:18px;
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;box-shadow:var(--shadow)}
+.pane-hdr{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between}
+.pane-title{font-weight:700;font-size:13px}
+.pane-body{flex:1;overflow-y:auto;padding:14px;min-height:0}
+.pane-body::-webkit-scrollbar{width:5px}
+.pane-body::-webkit-scrollbar-track{background:transparent}
+.pane-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Upload zone ── */
+.upload-zone{border:2px dashed var(--primary);border-radius:14px;padding:24px 16px;
+  text-align:center;cursor:pointer;transition:.2s;margin-bottom:12px;background:rgba(59,130,246,.04)}
+.upload-zone:hover,.upload-zone.drag{background:rgba(59,130,246,.1);border-color:#60a5fa}
+.upload-zone .uz-icon{font-size:28px;margin-bottom:8px}
+.upload-zone .uz-main{font-weight:700;color:#93c5fd;margin-bottom:4px}
+.upload-zone .uz-sub{font-size:12px;color:var(--muted)}
+.file-chip{display:flex;align-items:center;gap:10px;background:var(--panel2);
+  border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px}
+.file-chip-icon{font-size:20px}
+.file-chip-name{font-weight:600;font-size:13px}
+.file-chip-meta{font-size:11px;color:var(--muted)}
+
+/* ── Source text ── */
+#sourceText{line-height:1.8;font-size:13px}
+.src-para{margin-bottom:14px;color:#c8d8ee}
+.src-empty{color:var(--muted);text-align:center;padding:40px 0;font-size:13px}
+mark.ann{border-radius:2px;cursor:pointer;padding:1px 0;transition:.1s}
+mark.ann:hover{filter:brightness(1.3)}
+
+/* ── Dashboard ── */
+.phase-card{border:1px solid var(--border);border-radius:12px;padding:12px 14px;
+  margin-bottom:10px;background:var(--panel2)}
+.phase-card.active{border-color:var(--primary);background:rgba(59,130,246,.07)}
+.phase-card.done{border-color:#1a4a1a;background:rgba(34,197,94,.06)}
+.phase-label{font-weight:700;font-size:12px;margin-bottom:6px;display:flex;
+  align-items:center;justify-content:space-between}
+.phase-dims{font-size:11px;color:var(--muted)}
+.phase-bar-bg{height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:8px}
+.phase-bar-fill{height:100%;border-radius:3px;transition:width .3s ease;width:0%}
+.phase-timing{font-size:11px;color:var(--muted);margin-top:4px}
+
+.dim-section{margin-top:14px}
+.dim-section-title{font-size:11px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.1em;margin-bottom:8px;font-weight:600}
+.dim-row{margin-bottom:8px}
+.dim-row-hdr{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.dim-row-name{color:var(--text)}
+.dim-row-count{font-weight:700}
+.dim-bar-bg{height:4px;background:rgba(255,255,255,.06);border-radius:2px}
+.dim-bar-fill{height:100%;border-radius:2px;transition:width .4s ease;width:0%}
+
+.action-section{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.btn-primary{padding:12px;border-radius:12px;border:none;cursor:pointer;font-weight:700;
+  font-family:inherit;font-size:13px;
+  background:linear-gradient(135deg,var(--primary),var(--primary-d));color:#fff;
+  transition:.15s}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-secondary{padding:11px;border-radius:12px;border:1px solid var(--border);cursor:pointer;
+  font-weight:600;font-family:inherit;font-size:13px;
+  background:var(--panel2);color:var(--text);transition:.15s}
+.btn-secondary:hover{border-color:var(--primary);color:#93c5fd}
+.btn-danger{padding:11px;border-radius:12px;border:1px solid #7f1d1d;cursor:pointer;
+  font-weight:600;font-family:inherit;font-size:13px;
+  background:rgba(239,68,68,.08);color:#f87171;transition:.15s}
+.btn-danger:hover{background:rgba(239,68,68,.15)}
+
+.total-stat{text-align:center;padding:10px 0;border-top:1px solid var(--border);margin-top:12px}
+.total-num{font-size:28px;font-weight:800;color:var(--primary)}
+.total-label{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ── Issues panel ── */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap}
+select.filter-sel{padding:6px 10px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel2);color:var(--text);font-family:inherit;font-size:12px;flex:1;min-width:80px}
+.issue-count-badge{background:rgba(59,130,246,.2);color:#93c5fd;
+  border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
+
+.issue-card{border:1px solid var(--border);border-radius:12px;padding:12px 13px;
+  margin-bottom:8px;cursor:pointer;transition:.15s;background:var(--panel2)}
+.issue-card:hover{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.05)}
+.issue-card.highlighted{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.issue-card-hdr{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.dim-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;
+  border-radius:20px;border:1px solid;font-size:11px;font-weight:600}
+.sev-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.nr-badge{background:rgba(234,179,8,.15);border:1px solid rgba(234,179,8,.4);
+  color:#fde047;border-radius:20px;padding:2px 7px;font-size:10px}
+.issue-orig{font-size:12px;color:#94a3b8;margin-bottom:5px;
+  background:rgba(0,0,0,.2);border-radius:6px;padding:5px 8px;
+  border-left:2px solid var(--border)}
+.issue-sugg{font-size:12px;color:#86efac;margin-bottom:4px;font-weight:500}
+.issue-reason{font-size:11px;color:var(--muted);line-height:1.5}
+
+.issues-empty{color:var(--muted);text-align:center;padding:40px 0;font-size:13px}
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+  z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:20px;
+  padding:24px;width:min(540px,95vw);max-height:85vh;overflow-y:auto;box-shadow:var(--shadow)}
+.modal h3{font-size:16px;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.modal label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;margin-top:12px}
+.modal input,.modal select{width:100%;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--border);background:rgba(0,0,0,.3);color:var(--text);
+  font-family:inherit;font-size:13px}
+.modal input:focus,.modal select:focus{outline:none;border-color:var(--primary)}
+.modal-footer{display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.section-sep{margin:14px 0 6px;font-size:11px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.1em;font-weight:600;border-top:1px solid var(--border);padding-top:12px}
+
+/* ── KB modal ── */
+.kb-cat-row{display:flex;align-items:center;justify-content:space-between;
+  background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  padding:10px 12px;margin-bottom:6px}
+.kb-cat-row b{font-size:13px}
+.kb-cat-row small{color:var(--muted);font-size:11px;display:block}
+
+/* ── Group section header (for dim/page grouped view) ── */
+.group-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 10px;border-radius:10px;margin:8px 0 4px;cursor:pointer;
+  border:1px solid var(--border);background:var(--panel2);user-select:none;transition:.15s}
+.group-hdr:hover{border-color:rgba(255,255,255,.15)}
+.group-hdr-title{font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px}
+.group-hdr-count{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.group-body{overflow:hidden;transition:max-height .25s ease}
+.group-body.collapsed{max-height:0!important}
+
+/* ── Dimension chip selector ── */
+.dim-chip{display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:8px;
+  border:1px solid var(--border);background:var(--panel2);cursor:pointer;
+  font-size:11px;font-weight:600;transition:.15s;user-select:none}
+.dim-chip:hover{border-color:rgba(255,255,255,.2)}
+.dim-chip.active{border-color:var(--chip-color,#3b82f6);
+  background:var(--chip-bg,rgba(59,130,246,.15));color:var(--chip-color,#93c5fd)}
+.dim-chip.active .dim-chip-dot{background:var(--chip-color,#3b82f6)}
+.dim-chip-dot{width:6px;height:6px;border-radius:50%;background:var(--border);flex-shrink:0;transition:.15s}
+
+/* ── Footer ── */
+footer{height:30px;background:rgba(13,20,36,.9);border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0}
+footer span{font-size:11px;color:var(--muted)}
+#footerMsg{font-size:11px;color:var(--muted);max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Progress bar (global) ── */
+.prog-wrap{margin:8px 0 12px}
+.prog-bg{height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#22c55e,#3b82f6);
+  transition:width .3s ease;width:0%}
+.prog-label{font-size:11px;color:var(--muted);margin-top:5px}
+
+/* ── Responsive ── */
+@media(max-width:1200px){
+  .workspace{grid-template-columns:1fr 1fr}
+  .pane:nth-child(2){grid-column:span 2;grid-row:2;max-height:220px}
+}
+@media(max-width:768px){
+  .workspace{grid-template-columns:1fr;height:auto}
+  html,body{overflow:auto}
+  #app{height:auto}
+  .pane{max-height:60vh}
+}
+</style>
 </head>
 <body>
-<div class="window">
-  <div class="titlebar"><div class="win-left"><div class="dots"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div><div class="brand">AI审稿系统 <small>PDF + Word + 导出报告</small></div></div><div class="title-actions"><div class="chip">DOCX导出</div><div class="chip">状态轮询</div><div class="chip" id="topState">就绪</div></div></div>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="nav"><button class="active" onclick="activateNav(this);showStep('home')">🏠 首页</button><button onclick="activateNav(this);showStep('mode')">① 配置模型</button><button onclick="activateNav(this);showStep('kb')">② 知识库</button><button onclick="activateNav(this);showStep('review')">③ 上传文档</button><button onclick="activateNav(this);showStep('result')">④ 查看结果</button></div>
-      <div class="muted" style="margin-top:auto;padding-top:12px;border-top:1px solid var(--line);font-size:11px;text-align:center;line-height:1.8">AI 审稿系统<br>PDF · DOCX · Word 报告</div>
-    </aside>
-    <main class="content">
+<div id="app">
 
-      <section class="workspace">
-        <div class="panel">
-          <div id="home" class="wizard active"><h3>欢迎使用 AI 审稿系统</h3><div class="status" id="quickStatus">首次使用？请按以下步骤完成配置。已配置过可直接点《上传文档》开始审稿。</div><div class="steps-flow"><div class="step-card" onclick="activateNav(document.querySelectorAll('.nav button')[1]);showStep('mode')"><div class="step-num">1</div><div class="step-body"><b>配置模型</b><div class="muted" style="font-size:12px">设置 LLM 和 Embedding</div></div></div><div class="step-arrow">→</div><div class="step-card" onclick="activateNav(document.querySelectorAll('.nav button')[2]);showStep('kb')"><div class="step-num">2</div><div class="step-body"><b>准备知识库</b><div class="muted" style="font-size:12px">导入审稿参考资料</div></div></div><div class="step-arrow">→</div><div class="step-card" onclick="activateNav(document.querySelectorAll('.nav button')[3]);showStep('review')"><div class="step-num">3</div><div class="step-body"><b>上传文档</b><div class="muted" style="font-size:12px">PDF 或 Word 文件</div></div></div><div class="step-arrow">→</div><div class="step-card" onclick="activateNav(document.querySelectorAll('.nav button')[4]);showStep('result')"><div class="step-num">4</div><div class="step-body"><b>查看结果</b><div class="muted" style="font-size:12px">导出 Word 审稿报告</div></div></div></div></div>
-          <div id="mode" class="wizard"><h3>① 配置 AI 模型</h3><div id="mockWarning" style="display:none;background:#1c0f00;border:1px solid #92400e;border-radius:12px;padding:10px 14px;margin-bottom:12px;color:#fcd34d;font-size:13px">⚠️ 当前为模拟模式，审稿不会分析文档内容。请配置真实 LLM 后保存。</div><div class="section-label">大语言模型（LLM）—— 负责审稿分析与生成</div><select id="provider"><option value="mock">模拟模式（测试用，无需联网）</option><option value="openai_compatible">OpenAI 兼容接口（GPT / DeepSeek / 各类 API）</option><option value="ollama_compatible">Ollama 本地部署</option></select><input id="baseUrl" placeholder="Base URL，例：https://api.openai.com/v1" /><input id="apiKey" placeholder="API Key" /><input id="modelName" placeholder="模型名，例：gpt-4o-mini / deepseek-chat" /><input id="extraHeaders" placeholder='附加请求头（JSON 格式，选填），例：{"X-Application-Name": "editor-review"}' /><button class="primary-btn" onclick="saveConfig()">保存 LLM 设置</button><div class="section-label">向量模型（Embedding）—— 负责知识库语义检索</div><select id="embeddingProvider" onchange="onEmbeddingProviderChange()"><option value="simple">简单模式（关键词匹配，无需配置）</option><option value="sentence_transformers">本地模型（推荐，首次自动下载）</option><option value="openai_compatible_embeddings">API 接口（需填写 URL 和 Key）</option></select><div id="embeddingRemoteFields" style="display:none"><input id="embeddingBaseUrl" placeholder="Embedding Base URL" /><input id="embeddingApiKey" placeholder="Embedding API Key" /></div><input id="embeddingModel" placeholder="模型名，例：shibing624/text2vec-base-chinese" value="shibing624/text2vec-base-chinese" /><div class="section-label">向量存储后端</div><select id="vectorBackend"><option value="simple">simple — 关键词匹配</option><option value="faiss_like">faiss_like — 向量相似度搜索（推荐）</option><option value="qdrant">qdrant — 专业向量数据库（需额外部署）</option></select><button class="primary-btn" onclick="saveEmbeddingConfigAndBackend()">保存 Embedding / 向量设置</button></div>
-          <div id="kb" class="wizard"><h3>② 知识库管理</h3><div class="muted" style="font-size:13px;margin-bottom:4px">将参考文档（.txt / .md）放入 <b>data/kb/分类名/</b> 目录，再点对应分类的「重建」完成导入。</div><div class="section-label">新增自定义分类</div><div class="add-cat-row"><input id="newCatName" placeholder="输入分类名，例：finance、medical、history" /><button class="secondary-btn" onclick="addCategory()">+ 新增</button></div><div class="section-label">所有分类</div><div class="kb-category-list" id="kbCatList"><div class="muted">加载中...</div></div><div class="section-label">网页知识导入</div><div class="add-cat-row"><input id="kbUrl" placeholder="输入网页 URL" /><select id="kbCategory2" style="width:auto;min-width:120px;margin:0;padding:12px 10px;flex-shrink:0"></select><button class="secondary-btn" onclick="importUrl()">导入</button></div></div>
-          <div id="review" class="wizard"><h3>③ 上传文档</h3><div id="reviewMockWarning" style="display:none;background:#1c0f00;border:1px solid #92400e;border-radius:12px;padding:10px 14px;margin-bottom:12px;color:#fcd34d;font-size:13px">⚠️ 当前为模拟模式，点击开始审稿将得到假结果。请先到 [① 配置模型] 设置真实 LLM。</div><div id="dropzone" class="dropzone" onclick="docFile.click()"><div style="font-size:18px;font-weight:700">拖拽 PDF / Word 到这里</div><div class="muted" style="margin-top:8px">支持 .pdf 和 .docx，或点击此区域选择文件</div></div><input type="file" id="docFile" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none" /><div id="fileInfoCard" class="file-info"><div class="fi-name" id="fiName"></div><div class="fi-meta" id="fiMeta"></div></div><div class="grid3"><select id="reviewCategory"></select><select id="scanModeSelect"><option value="false">普通 PDF / Word</option><option value="true">扫描件 PDF（OCR）</option></select><select id="exportMode"><option value="all">导出全部报告</option><option value="markdown">只导出 Markdown</option><option value="csv">只导出 CSV</option><option value="none">仅界面显示</option></select></div><div class="progress-wrap"><div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div><div id="progressText" class="progress-text">等待开始</div></div><div id="liveIssuesBox" style="display:none;margin:8px 0"><div class="section-label" style="margin-top:6px">实时发现的问题 <span id="liveIssueCount" style="color:#94a3b8;font-size:11px;text-transform:none;letter-spacing:0"></span></div><div id="liveIssuesList" style="max-height:160px;overflow-y:auto;background:#0b1220;border:1px solid #243041;border-radius:10px;padding:6px 10px"></div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="primary-btn" id="startReviewBtn" onclick="queueReviewTask()" disabled style="opacity:.5;cursor:not-allowed;flex:1;min-width:140px">请先选择文档</button><button class="secondary-btn" id="pauseReviewBtn" onclick="pausePolling()" style="display:none;width:auto;padding:12px 16px">⏸ 暂停</button><button class="secondary-btn" id="resumeReviewBtn" onclick="resumePolling()" style="display:none;width:auto;padding:12px 16px">▶ 继续</button><button id="stopReviewBtn" onclick="stopTask()" style="display:none;padding:12px 16px;border:1px solid #7f1d1d;border-radius:12px;background:#111827;color:#f87171;cursor:pointer;font-size:14px;font-family:inherit">■ 停止</button></div></div>
-          <div id="result" class="wizard"><h3>审稿结果</h3><div class="grid2"><div><h4>摘要</h4><pre id="summary"></pre></div><div><h4>修订稿</h4><pre id="revised"></pre></div></div><div style="height:10px"></div><div class="grid2"><button class="primary-btn" onclick="exportCurrentTaskDocx()">导出 Word 审稿报告</button><button class="secondary-btn" onclick="loadServerTasks()">刷新历史任务</button></div><div style="height:10px"></div><h4>问题筛选</h4><div class="grid2"><select id="filterType" onchange="renderIssues()"><option value="">全部类型</option><option value="spelling">spelling</option><option value="grammar">grammar</option><option value="format">format</option><option value="style">style</option><option value="fact">fact</option><option value="terminology">terminology</option><option value="logic">logic</option><option value="reference">reference</option></select><select id="filterSeverity" onchange="renderIssues()"><option value="">全部严重度</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option></select></div><div style="height:10px"></div><div id="issues" class="issues"></div></div>
-        </div>
-        <div class="panel" id="outputPanel" style="display:none"><h3>运行与系统输出</h3><div id="stats" class="status">等待任务开始</div><div style="height:12px"></div><pre id="output"></pre><div style="height:14px"></div><h3>历史任务列表（服务端）</h3><div id="historyList" class="history-list"><div class="muted">暂无历史任务</div></div></div>
-      </section>
-    </main>
-    <aside class="rightbar"><div class="panel"><h3>当前状态</h3><div class="status" id="stateBox">应用已启动，等待操作。</div><div style="height:12px"></div><div class="muted">当前支持 PDF 与 DOCX 文档审稿，以及 DOCX 报告导出。</div></div><div class="panel"><h3>问题预览</h3><div id="issuesPreview" class="issues muted">暂无问题</div></div><div class="panel"><h3>快捷信息</h3><div><span class="tag">PDF</span><span class="tag">DOCX</span><span class="tag">DOCX报告</span><span class="tag">后端队列</span><span class="tag">轮询</span></div></div></aside>
+<!-- ── Header ─────────────────────────────────────────── -->
+<header>
+  <div class="brand">✍️ AI 专业编辑审稿 <small>六维并行分析</small></div>
+  <div class="header-actions">
+    <button class="h-btn" onclick="openKB()">📚 知识库</button>
+    <button class="h-btn" onclick="openRules()" id="rulesBtn">📏 自定义规则</button>
+    <button class="h-btn" onclick="openConfig()">⚙ 配置模型</button>
+    <div class="status-chip" id="headerStatus">就绪</div>
   </div>
-  <div class="footerbar"><div>AI 审稿系统 · PDF + Word + Word导出</div><div id="footerState">Ready</div></div>
-</div>
-<script>
-let currentIssues=[];let selectedDocFile=null;let currentTaskId=null;let pollTimer=null;let taskPaused=false;
-function activateNav(btn){document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
-function showStep(id){document.querySelectorAll('.wizard').forEach(w=>w.classList.remove('active'));document.getElementById(id).classList.add('active');const showOut=['review','result'].includes(id);document.querySelector('.workspace').classList.toggle('full-width',!showOut);const op=document.getElementById('outputPanel');if(op)op.style.display=showOut?'':'none';setState('当前页面：'+id);}
-function setState(msg){stateBox.textContent=msg;footerState.textContent=msg;topState.textContent=msg;}
-function onEmbeddingProviderChange(){const p=embeddingProvider.value;const needsUrl=p==='openai_compatible_embeddings';document.getElementById('embeddingRemoteFields').style.display=needsUrl?'block':'none';if(p==='sentence_transformers'){vectorBackend.value='faiss_like';}else if(p==='simple'){vectorBackend.value='simple';}}
-function toggleKbAdvanced(){const el=document.getElementById('kbAdvanced');el.style.display=el.style.display==='none'?'block':'none';}
-function setProgress(p,msg){progressFill.style.width=p+'%';progressText.textContent=msg||('进度 '+p+'%');}
-async function loadConfig(){const res=await fetch('/config');const cfg=await res.json();provider.value=cfg.llm?.provider||'mock';baseUrl.value=cfg.llm?.base_url||'';apiKey.value=cfg.llm?.api_key||'';modelName.value=cfg.llm?.model||'';embeddingProvider.value=cfg.embedding?.provider||'simple';onEmbeddingProviderChange();embeddingBaseUrl.value=cfg.embedding?.base_url||'';embeddingApiKey.value=cfg.embedding?.api_key||'';embeddingModel.value=cfg.embedding?.model||'shibing624/text2vec-base-chinese';const eh=document.getElementById('extraHeaders');if(eh)eh.value=cfg.llm?.extra_headers||'';quickStatus.textContent='配置已加载，可直接使用。';const isMock=(cfg.llm?.provider||'mock')==='mock';const mw=document.getElementById('mockWarning');if(mw)mw.style.display=isMock?'':'none';const rmw=document.getElementById('reviewMockWarning');if(rmw)rmw.style.display=isMock?'':'none';loadCategories();loadServerTasks();setState('配置已加载');}
+</header>
 
-async function saveConfig(){const body={provider:provider.value,base_url:baseUrl.value,api_key:apiKey.value,model:modelName.value,extra_headers:document.getElementById('extraHeaders').value.trim()};const res=await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();output.textContent=JSON.stringify(data,null,2);setState(data.message||'LLM 设置已保存');const isMock=provider.value==='mock';const mw=document.getElementById('mockWarning');if(mw)mw.style.display=isMock?'':'none';const rmw=document.getElementById('reviewMockWarning');if(rmw)rmw.style.display=isMock?'':'none';}
-async function saveEmbeddingConfigAndBackend(){const body={provider:embeddingProvider.value,base_url:embeddingBaseUrl.value,api_key:embeddingApiKey.value,model:embeddingModel.value};const res=await fetch('/embedding/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();const body2={backend:vectorBackend.value,category:null};const res2=await fetch('/kb/backend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body2)});const data2=await res2.json();output.textContent=JSON.stringify({embedding:data,backend:data2},null,2);setState('Embedding / 向量设置已保存');}
-async function rebuildKbQuick(category){const body={folder:'data/kb',category};const res=await fetch('/kb/rebuild',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();output.textContent=JSON.stringify(data,null,2);loadCategories();setState('知识库重建完成：'+category);}
-async function rebuildKb(){const body={folder:kbFolder.value,category:kbCategory.value};const res=await fetch('/kb/rebuild',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();output.textContent=JSON.stringify(data,null,2);loadCategories();setState('知识库重建完成');}
-async function importUrl(){const body={url:kbUrl.value,category:kbCategory2.value};const res=await fetch('/kb/import_url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();output.textContent=JSON.stringify(data,null,2);loadCategories();setState('网页知识导入完成');}
-const DEFAULT_CATS=['editor','general','law','biology','chemistry','physics'];const CAT_LABELS={editor:'编辑规范',general:'通用',law:'法律',biology:'生物',chemistry:'化学',physics:'物理'};function getCustomCategories(){try{return JSON.parse(localStorage.getItem('kbCustomCats')||'[]');}catch{return[];}}function saveCustomCategories(c){localStorage.setItem('kbCustomCats',JSON.stringify(c));}function addCategory(){const name=(document.getElementById('newCatName').value||'').trim().toLowerCase().replace(/\s+/g,'_');if(!name)return;const cats=getCustomCategories();if(!cats.includes(name)&&!DEFAULT_CATS.includes(name)){cats.push(name);saveCustomCategories(cats);}document.getElementById('newCatName').value='';loadCategories();}function removeCategory(cat){saveCustomCategories(getCustomCategories().filter(c=>c!==cat));loadCategories();}async function loadCategories(){const res=await fetch('/kb/categories');const data=await res.json();const serverCats=data.categories||[];const allCats=[...new Set([...DEFAULT_CATS,...getCustomCategories(),...serverCats])];const list=document.getElementById('kbCatList');if(list){list.innerHTML='';allCats.forEach(cat=>{const card=document.createElement('div');card.className='kb-cat-card';const isDefault=DEFAULT_CATS.includes(cat);card.innerHTML=`<b>${escapeHtml(CAT_LABELS[cat]||cat)}</b><span class="muted" style="font-size:11px">${escapeHtml(cat)}</span><button onclick="rebuildKbQuick('${escapeHtml(cat)}')">重建</button>${!isDefault?`<button class="danger" onclick="removeCategory('${escapeHtml(cat)}')">删除</button>`:''}`;list.appendChild(card);});}const s2=document.getElementById('kbCategory2');if(s2)s2.innerHTML=allCats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(CAT_LABELS[c]||c)}</option>`).join('');const rc=document.getElementById('reviewCategory');if(rc)rc.innerHTML=allCats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(CAT_LABELS[c]||c)}</option>`).join('')+'<option value="">全部知识库</option>';}
-async function queueReviewTask(){const f=selectedDocFile||docFile.files[0];if(!f){alert('请选择 PDF 或 Word 文件');return;}const fd=new FormData();fd.append('file',f);fd.append('kb_category',reviewCategory.value||'');fd.append('scan_mode',scanModeSelect.value);const mode=exportMode.value;fd.append('export_markdown',String(mode==='all'||mode==='markdown'));fd.append('export_csv',String(mode==='all'||mode==='csv'));setProgress(3,'正在提交文档任务到后端队列');setState('正在提交任务...');const lb=document.getElementById('liveIssuesBox');if(lb)lb.style.display='none';const sbtn=document.getElementById('startReviewBtn');if(sbtn){sbtn.disabled=true;sbtn.style.opacity='.5';sbtn.textContent='审稿中...';}const res=await fetch('/tasks/review_document',{method:'POST',body:fd});const data=await res.json();output.textContent=JSON.stringify(data,null,2);if(data.task_id){currentTaskId=data.task_id;stats.innerHTML=`<span class='tag'>任务ID：${data.task_id}</span><span class='tag'>状态：queued</span>`;setState('任务已入队');startPolling(data.task_id);loadServerTasks();}else{if(sbtn){sbtn.disabled=false;sbtn.style.opacity='1';sbtn.textContent='开始审稿';}setState(data.message||'提交失败');}}
-function pausePolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}taskPaused=true;document.getElementById('pauseReviewBtn').style.display='none';document.getElementById('resumeReviewBtn').style.display='';setState('进度追踪已暂停，任务仍在后台运行');}
-function resumePolling(){if(!currentTaskId||!taskPaused)return;taskPaused=false;document.getElementById('resumeReviewBtn').style.display='none';document.getElementById('pauseReviewBtn').style.display='';startPolling(currentTaskId);setState('继续追踪进度');}
-async function stopTask(){if(!currentTaskId)return;if(pollTimer){clearInterval(pollTimer);pollTimer=null;}taskPaused=false;try{await fetch('/tasks/'+currentTaskId+'/cancel',{method:'POST'});}catch(e){}['pauseReviewBtn','resumeReviewBtn','stopReviewBtn'].forEach(id=>document.getElementById(id).style.display='none');const btn=document.getElementById('startReviewBtn');if(btn){btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';btn.textContent='开始审稿';}setProgress(0,'任务已停止');setState('任务已取消');currentTaskId=null;}
-function _hideReviewControls(){['pauseReviewBtn','resumeReviewBtn','stopReviewBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
-function startPolling(taskId){if(pollTimer)clearInterval(pollTimer);taskPaused=false;document.getElementById('pauseReviewBtn').style.display='';document.getElementById('stopReviewBtn').style.display='';document.getElementById('resumeReviewBtn').style.display='none';pollTask(taskId);pollTimer=setInterval(()=>pollTask(taskId),1500);}
-async function pollTask(taskId){const res=await fetch('/tasks/'+taskId);const data=await res.json();if(!data.ok)return;setProgress(data.progress||0,data.message||'处理中');if(data.partial_issues&&data.partial_issues.length)renderLiveIssues(data.partial_issues);stats.innerHTML=`<span class='tag'>任务ID：${data.task_id}</span><span class='tag'>状态：${data.status}</span><span class='tag'>进度：${data.progress}%</span><span class='tag'>类型：${data.file_type||''}</span>`;setState(data.message||data.status);output.textContent=JSON.stringify(data,null,2);loadServerTasks();if(data.status==='completed'){clearInterval(pollTimer);_hideReviewControls();const b=document.getElementById('startReviewBtn');if(b){b.disabled=false;b.style.opacity='1';b.textContent='开始审稿';}applyTaskResult(data);showStep('result');}else if(data.status==='failed'){clearInterval(pollTimer);_hideReviewControls();const b=document.getElementById('startReviewBtn');if(b){b.disabled=false;b.style.opacity='1';b.textContent='开始审稿';}setState('任务失败：'+(data.error||''));}else if(data.status==='cancelled'){clearInterval(pollTimer);_hideReviewControls();const b=document.getElementById('startReviewBtn');if(b){b.disabled=false;b.style.opacity='1';b.textContent='开始审稿';}setProgress(0,'任务已取消');}}
-function applyTaskResult(task){const result=task.result||{};summary.textContent=result.summary||'';revised.textContent=result.revised_text||'';currentIssues=result.issues||[];renderIssues();currentTaskId=task.task_id;setState('审稿完成');}
-function exportCurrentTaskDocx(){if(!currentTaskId){alert('当前没有可导出的任务');return;}window.open(`/tasks/${currentTaskId}/export_docx`,'_blank');}
-async function loadServerTasks(){const res=await fetch('/tasks');const data=await res.json();historyList.innerHTML='';const tasks=data.tasks||[];if(!tasks.length){historyList.innerHTML='<div class="muted">暂无历史任务</div>';return;}tasks.forEach(task=>{const div=document.createElement('div');div.className='history-item';div.innerHTML=`<b>${escapeHtml(task.file_name||'未命名文件')}</b><div class='history-meta'>${escapeHtml(task.created_at||'')} · ${escapeHtml(task.status||'')} · ${task.progress||0}% · ${escapeHtml(task.file_type||'')}</div><div style='margin-top:8px'><button class='secondary-btn' style='padding:8px 10px' onclick='event.stopPropagation();openTask("${task.task_id}")'>打开</button> ${task.status==='completed' ? `<button class='secondary-btn' style='padding:8px 10px;margin-top:6px' onclick='event.stopPropagation();window.open("/tasks/${task.task_id}/export_docx","_blank")'>导出Word报告</button>` : ''}</div>`;div.onclick=()=>openTask(task.task_id);historyList.appendChild(div);});}
-async function openTask(taskId){currentTaskId=taskId;const res=await fetch('/tasks/'+taskId);const data=await res.json();output.textContent=JSON.stringify(data,null,2);setProgress(data.progress||0,data.message||'');if(data.status==='completed')applyTaskResult(data);if(data.status==='running'||data.status==='queued')startPolling(taskId);showStep(data.status==='completed'?'result':'review');}
-function renderIssues(){const t=filterType.value,s=filterSeverity.value;const list=currentIssues.filter(it=>(!t||it.issue_type===t)&&(!s||it.severity===s));issues.innerHTML='';issuesPreview.innerHTML='';if(!list.length){issues.innerHTML='<div class="muted">暂无匹配问题</div>';issuesPreview.innerHTML='<div class="muted">暂无匹配问题</div>';return;}list.forEach((it,idx)=>{const html=`<div class='issue'><b>${it.issue_type||''}</b> / ${it.severity||''}<br><br><b>原文：</b>${escapeHtml(it.original||'')}<br><br><b>建议：</b>${escapeHtml(it.suggestion||'')}<br><br><b>原因：</b>${escapeHtml(it.reason||'')}<br><br><b>依据：</b>${escapeHtml(it.evidence||'')}</div>`;issues.insertAdjacentHTML('beforeend',html);if(idx<4)issuesPreview.insertAdjacentHTML('beforeend',html);});}
-function renderLiveIssues(issues){const box=document.getElementById('liveIssuesBox');const list=document.getElementById('liveIssuesList');const cnt=document.getElementById('liveIssueCount');if(!box||!list||!issues||!issues.length)return;box.style.display='';cnt.textContent='('+issues.length+' 处)';const sc={high:'#f87171',medium:'#fbbf24',low:'#86efac'};list.innerHTML=issues.slice(-10).map(iss=>`<div style="padding:4px 0;border-bottom:1px solid #1e2d40;font-size:12px;display:flex;gap:6px;align-items:baseline"><span style="color:${sc[iss.severity]||'#94a3b8'};min-width:28px;font-weight:600">${escapeHtml(iss.severity||'')}</span><span style="color:#60a5fa;min-width:72px">${escapeHtml(iss.issue_type||'')}</span><span style="color:#cbd5e1;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml((iss.original||'').slice(0,50))}</span></div>`).join('');list.scrollTop=list.scrollHeight;}
-function showFileInfo(f){const sz=f.size>1048576?(f.size/1048576).toFixed(1)+' MB':(f.size/1024).toFixed(0)+' KB';const ext=f.name.split('.').pop().toUpperCase();document.getElementById('fiName').textContent=f.name;document.getElementById('fiMeta').textContent=ext+' · '+sz;document.getElementById('fileInfoCard').style.display='block';const btn=document.getElementById('startReviewBtn');if(btn){btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';btn.textContent='开始审稿';}setState('已选择：'+f.name);}
-function bindDropUpload(){['dragenter','dragover'].forEach(evt=>dropzone.addEventListener(evt,e=>{e.preventDefault();dropzone.classList.add('dragover')}));['dragleave','drop'].forEach(evt=>dropzone.addEventListener(evt,e=>{e.preventDefault();dropzone.classList.remove('dragover')}));dropzone.addEventListener('drop',e=>{const files=e.dataTransfer.files;if(files&&files[0]){selectedDocFile=files[0];showFileInfo(files[0]);}});docFile.addEventListener('change',e=>{const f=e.target.files[0];if(f){selectedDocFile=f;showFileInfo(f);}});}
-function escapeHtml(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
-bindDropUpload();loadConfig();showStep('home');
+<!-- ── Three-column workspace ─────────────────────────── -->
+<div class="workspace">
+
+  <!-- Left: source text + upload -->
+  <div class="pane">
+    <div class="pane-hdr">
+      <span class="pane-title">📄 原文</span>
+      <span style="font-size:11px;color:var(--muted)" id="srcInfo"></span>
+    </div>
+    <div class="pane-body">
+      <div id="uploadZone" class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <div class="uz-icon">📂</div>
+        <div class="uz-main">拖拽 PDF / Word 到这里</div>
+        <div class="uz-sub">支持 .pdf 和 .docx，或点击选择文件</div>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf,.docx" style="display:none"/>
+      <div id="fileChip" style="display:none" class="file-chip">
+        <span class="file-chip-icon" id="fcIcon">📄</span>
+        <div>
+          <div class="file-chip-name" id="fcName"></div>
+          <div class="file-chip-meta" id="fcMeta"></div>
+        </div>
+      </div>
+      <div id="sourceText"><div class="src-empty">上传文档后，原文将在此显示，<br>审稿问题将以彩色高亮标注。</div></div>
+    </div>
+  </div>
+
+  <!-- Center: dashboard -->
+  <div class="pane">
+    <div class="pane-hdr">
+      <span class="pane-title">📊 审稿进度</span>
+    </div>
+    <div class="pane-body">
+
+      <div class="prog-wrap">
+        <div class="prog-bg"><div class="prog-fill" id="progressFill"></div></div>
+        <div class="prog-label" id="progressLabel">等待开始</div>
+      </div>
+
+      <!-- Phase 1 -->
+      <div class="phase-card" id="phase1Card">
+        <div class="phase-label">
+          <span>⚡ Phase 1  快速扫描</span>
+          <span id="p1Badge" style="font-size:11px;color:var(--muted)">等待中</span>
+        </div>
+        <div class="phase-dims" id="p1Dims">语法文字 · 格式规范 · 语气风格</div>
+        <div class="phase-bar-bg"><div class="phase-bar-fill" id="p1Fill" style="background:var(--primary)"></div></div>
+        <div class="phase-timing" id="p1Timing"></div>
+      </div>
+
+      <!-- Phase 2 -->
+      <div class="phase-card" id="phase2Card">
+        <div class="phase-label">
+          <span>🔬 Phase 2  深度分析</span>
+          <span id="p2Badge" style="font-size:11px;color:var(--muted)">等待中</span>
+        </div>
+        <div class="phase-dims" id="p2Dims">专业术语 · 逻辑结构 · 事实核查</div>
+        <div class="phase-bar-bg"><div class="phase-bar-fill" id="p2Fill" style="background:var(--g-cyan)"></div></div>
+        <div class="phase-timing" id="p2Timing"></div>
+      </div>
+
+      <!-- Dimension stats -->
+      <div class="dim-section">
+        <div class="dim-section-title">维度统计</div>
+        <div id="dimStats">
+          <div style="color:var(--muted);font-size:12px;text-align:center;padding:12px 0">暂无数据</div>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div id="summaryBox" style="display:none;margin-top:12px">
+        <div class="dim-section-title">审稿摘要</div>
+        <div id="summaryText" style="font-size:12px;color:#c8d8ee;line-height:1.7;
+          background:var(--panel2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"></div>
+      </div>
+
+      <!-- Total + actions -->
+      <div class="total-stat">
+        <div class="total-num" id="totalIssues">—</div>
+        <div class="total-label">发现问题总数</div>
+      </div>
+
+      <div class="action-section">
+        <!-- Dimension selector -->
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;
+            letter-spacing:.08em;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center">
+            <span>审稿维度选择</span>
+            <div style="display:flex;gap:8px">
+              <span onclick="selectAllDims()" style="color:#3b82f6;cursor:pointer;font-weight:400;
+                text-transform:none;letter-spacing:0">全选</span>
+              <span onclick="selectNoneDims()" style="color:var(--muted);cursor:pointer;font-weight:400;
+                text-transform:none;letter-spacing:0">清空</span>
+            </div>
+          </div>
+          <div id="dimSelector" style="display:grid;grid-template-columns:1fr 1fr;gap:5px"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:2px">
+          <label style="font-size:11px;color:var(--muted)">知识库类别
+            <select id="kbCatSelect" style="margin-top:4px;width:100%;padding:7px 8px;
+              border-radius:8px;border:1px solid var(--border);background:var(--panel2);
+              color:var(--text);font-family:inherit;font-size:12px">
+              <option value="">全部</option>
+            </select>
+          </label>
+          <label style="font-size:11px;color:var(--muted)">文档类型
+            <select id="scanModeSelect" style="margin-top:4px;width:100%;padding:7px 8px;
+              border-radius:8px;border:1px solid var(--border);background:var(--panel2);
+              color:var(--text);font-family:inherit;font-size:12px">
+              <option value="false">普通文档</option>
+              <option value="true">扫描件(OCR)</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- Page range selector -->
+        <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+          padding:9px 12px;margin-bottom:6px">
+          <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:7px;
+            display:flex;align-items:center;justify-content:space-between">
+            <span>📄 页码范围（PDF）</span>
+            <span id="pageRangeLabel" style="color:#3b82f6;font-weight:400;font-size:10px">全文</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center">
+            <label style="font-size:11px;color:var(--muted);margin:0">从第
+              <input type="number" id="pageStart" value="1" min="1"
+                oninput="updatePageRangeLabel()"
+                style="width:100%;margin-top:3px;padding:5px 8px;border-radius:7px;
+                  border:1px solid var(--border);background:var(--bg);color:var(--text);
+                  font-family:inherit;font-size:12px;text-align:center"/>
+            </label>
+            <span style="color:var(--muted);font-size:12px;padding-top:14px">至</span>
+            <label style="font-size:11px;color:var(--muted);margin:0">第
+              <span style="font-size:10px;color:var(--muted)">（0=末页）</span>
+              <input type="number" id="pageEnd" value="0" min="0"
+                oninput="updatePageRangeLabel()"
+                style="width:100%;margin-top:3px;padding:5px 8px;border-radius:7px;
+                  border:1px solid var(--border);background:var(--bg);color:var(--text);
+                  font-family:inherit;font-size:12px;text-align:center"/>
+            </label>
+          </div>
+          <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap">
+            <button onclick="setPageRange(1,20)"  class="btn-secondary" style="padding:3px 9px;font-size:10px;flex:1">前20页</button>
+            <button onclick="setPageRange(1,50)"  class="btn-secondary" style="padding:3px 9px;font-size:10px;flex:1">前50页</button>
+            <button onclick="setPageRange(1,100)" class="btn-secondary" style="padding:3px 9px;font-size:10px;flex:1">前100页</button>
+            <button onclick="setPageRange(1,0)"   class="btn-secondary" style="padding:3px 9px;font-size:10px;flex:1">全文</button>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="startBtn" onclick="startReview()" disabled>选择文档后开始审稿</button>
+        <button class="btn-danger" id="cancelBtn" onclick="cancelTask()" style="display:none">■ 停止审稿</button>
+        <button class="btn-secondary" id="exportBtn" onclick="exportDocx()" style="display:none">📥 导出 Word 报告</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: issues list -->
+  <div class="pane">
+    <div class="pane-hdr" style="flex-wrap:wrap;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+        <span class="pane-title">🔎 问题列表 <span class="issue-count-badge" id="issueCountBadge">0</span></span>
+        <!-- View mode toggle -->
+        <div style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0">
+          <button id="viewByDim" onclick="setViewMode('dim')"
+            style="padding:4px 10px;font-size:11px;font-family:inherit;border:none;cursor:pointer;
+              background:var(--primary);color:#fff;font-weight:700">按维度</button>
+          <button id="viewByPage" onclick="setViewMode('page')"
+            style="padding:4px 10px;font-size:11px;font-family:inherit;border:none;cursor:pointer;
+              background:var(--panel2);color:var(--muted);font-weight:600">按页码</button>
+          <button id="viewFlat" onclick="setViewMode('flat')"
+            style="padding:4px 10px;font-size:11px;font-family:inherit;border:none;cursor:pointer;
+              background:var(--panel2);color:var(--muted);font-weight:600">全部</button>
+        </div>
+      </div>
+      <div class="filter-row" style="width:100%">
+        <select class="filter-sel" id="filterDim" onchange="renderIssues()">
+          <option value="">全部维度</option>
+          <option value="grammar">语法文字</option>
+          <option value="spelling">格式规范</option>
+          <option value="style">语气风格</option>
+          <option value="terminology">专业术语</option>
+          <option value="logic">逻辑结构</option>
+          <option value="fact">事实核查</option>
+          <option value="qa_check">题目校验</option>
+        </select>
+        <select class="filter-sel" id="filterSev" onchange="renderIssues()">
+          <option value="">全部严重度</option>
+          <option value="high">严重</option>
+          <option value="medium">中等</option>
+          <option value="low">轻微</option>
+        </select>
+      </div>
+    </div>
+    <div class="pane-body" id="issuesList">
+      <div class="issues-empty">暂无问题<br><span style="font-size:11px">开始审稿后，问题将实时显示在这里</span></div>
+    </div>
+    <!-- Output files section at bottom of issues pane -->
+    <div style="padding:10px 14px 12px;border-top:1px solid var(--border);flex-shrink:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em">
+          📁 输出文件
+        </span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="loadOutputFiles()" style="font-size:10px;color:#3b82f6;background:none;
+            border:none;cursor:pointer;padding:0">刷新</button>
+          <button onclick="clearAllOutput()" style="font-size:10px;color:#ef4444;background:none;
+            border:none;cursor:pointer;padding:0">清空</button>
+        </div>
+      </div>
+      <div id="outputFilesList" style="max-height:120px;overflow-y:auto">
+        <div style="color:var(--muted);font-size:11px;text-align:center;padding:6px 0">暂无输出文件</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- workspace -->
+
+<!-- ── Footer ──────────────────────────────────────────── -->
+<footer>
+  <span>AI 专业编辑审稿 · 六维并行分析引擎</span>
+  <span id="footerMsg">就绪</span>
+</footer>
+
+<!-- ── Config Modal ─────────────────────────────────────── -->
+<div class="modal-overlay" id="configOverlay" onclick="if(event.target===this)closeConfig()">
+  <div class="modal">
+    <h3>⚙ 配置 AI 模型</h3>
+
+    <!-- Mock mode warning -->
+    <div id="mockWarn" style="display:none;background:#1c0f00;border:1px solid #92400e;
+      border-radius:10px;padding:10px 12px;margin-bottom:12px;color:#fcd34d;font-size:12px">
+      ⚠️ 当前为模拟模式，审稿不会分析文档实际内容。请配置真实 LLM 后保存。
+    </div>
+
+    <!-- Validation result box -->
+    <div id="cfgValidBox" style="display:none;border-radius:10px;padding:10px 14px;
+      margin-bottom:12px;font-size:12px;line-height:1.6"></div>
+
+    <!-- ── API Key 快速切换 ── -->
+    <div class="section-sep">🔑 API Key 快速切换</div>
+    <div id="apiKeyList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px">
+      <div style="color:var(--muted);font-size:12px">加载中…</div>
+    </div>
+    <!-- Add new key -->
+    <details style="margin-top:6px">
+      <summary style="font-size:11px;color:var(--muted);cursor:pointer;user-select:none">+ 添加新 API Key</summary>
+      <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:6px">
+        <label style="font-size:11px;color:var(--muted)">标识名（如 siliconflow / intranet）
+          <input id="newKeyId" placeholder="siliconflow" style="width:100%;padding:7px 8px;margin-top:3px;
+            border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:12px"/>
+        </label>
+        <label style="font-size:11px;color:var(--muted)">API Key
+          <input id="newKeyVal" placeholder="sk-..." type="password" style="width:100%;padding:7px 8px;margin-top:3px;
+            border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:12px"/>
+        </label>
+        <label style="font-size:11px;color:var(--muted)">Base URL
+          <input id="newKeyUrl" placeholder="https://api.siliconflow.cn/v1" style="width:100%;padding:7px 8px;margin-top:3px;
+            border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:12px"/>
+        </label>
+        <label style="font-size:11px;color:var(--muted)">备注
+          <input id="newKeyNote" placeholder="例：硅基流动 - 外网使用" style="width:100%;padding:7px 8px;margin-top:3px;
+            border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:12px"/>
+        </label>
+        <button class="btn-secondary" onclick="saveNewApiKey()" style="margin-top:8px;width:100%">保存</button>
+      </div>
+    </details>
+
+    <!-- Preset selector -->
+    <div class="section-sep">快速预设</div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1">
+        <select id="presetSelect" style="width:100%;padding:9px 10px;border-radius:10px;
+          border:1px solid var(--border);background:var(--panel2);color:var(--text);
+          font-family:inherit;font-size:12px">
+          <option value="">— 选择预设快速填入 —</option>
+        </select>
+        <div id="presetNote" style="font-size:11px;color:var(--muted);margin-top:4px;min-height:16px"></div>
+      </div>
+      <button class="btn-secondary" onclick="applySelectedPreset()"
+        style="padding:9px 14px;white-space:nowrap">应用</button>
+    </div>
+
+    <!-- ── API Key (shared) ── -->
+    <div class="section-sep" style="display:flex;align-items:center;justify-content:space-between">
+      <span>🔑 API Key（两个阶段共用）</span>
+      <span style="font-size:11px;color:var(--muted);font-weight:400">各阶段也可单独填写覆盖</span>
+    </div>
+    <label>API Key
+      <input id="cfgApiKey" placeholder="填写后两个阶段自动使用此 Key（可在各阶段单独覆盖）" type="password"/>
+    </label>
+
+    <!-- ── Phase 1 ── -->
+    <div class="section-sep">
+      ⚡ Phase 1 — 快速扫描（语法 · 格式 · 风格）
+      <span style="background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.3);
+        border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;margin-left:6px">推荐 DeepSeek V3.2</span>
+    </div>
+    <div style="background:var(--panel2);border:1px solid rgba(59,130,246,.25);border-radius:12px;padding:12px 14px">
+      <div style="display:flex;gap:8px;margin-bottom:6px;align-items:flex-end">
+        <div style="flex:1">
+          <select id="p1PresetSel" onchange="applyPhasePreset(1)"
+            style="width:100%;padding:7px 8px;border-radius:8px;border:1px solid var(--border);
+              background:var(--bg);color:var(--text);font-family:inherit;font-size:11px">
+            <option value="">— 选择预设 —</option>
+          </select>
+        </div>
+      </div>
+      <label style="font-size:11px;color:var(--muted)">Base URL
+        <input id="h1BaseUrl" placeholder="https://api.llm-incubator.automotive.cloud/prod/v0/llm"/>
+      </label>
+      <label style="font-size:11px;color:var(--muted)">API Key（覆盖全局 Key）
+        <input id="h1ApiKey" placeholder="留空则使用全局 Key" type="password"/>
+      </label>
+      <label style="font-size:11px;color:var(--muted)">模型名称
+        <input id="h1Model" placeholder="DeepSeek-V3.2"/>
+      </label>
+      <label style="font-size:11px;color:var(--muted)">附加请求头（选填）
+        <input id="h1Headers" placeholder='{"X-Application-Name":"ai-editor-review"}'/>
+      </label>
+    </div>
+
+    <!-- ── Phase 2 ── -->
+    <div class="section-sep">
+      🔬 Phase 2 — 深度分析（术语 · 逻辑 · 事实 · 题目校验）
+      <span style="background:rgba(234,179,8,.15);color:#fde047;border:1px solid rgba(234,179,8,.3);
+        border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;margin-left:6px">推荐 DeepSeek V4-Pro</span>
+    </div>
+    <div style="background:var(--panel2);border:1px solid rgba(6,182,212,.25);border-radius:12px;padding:12px 14px">
+      <div style="display:flex;gap:8px;margin-bottom:6px;align-items:flex-end">
+        <div style="flex:1">
+          <select id="p2PresetSel" onchange="applyPhasePreset(2)"
+            style="width:100%;padding:7px 8px;border-radius:8px;border:1px solid var(--border);
+              background:var(--bg);color:var(--text);font-family:inherit;font-size:11px">
+            <option value="">— 选择预设 —</option>
+          </select>
+        </div>
+      </div>
+      <label style="font-size:11px;color:var(--muted)">Base URL
+        <input id="h2BaseUrl" placeholder="https://api.llm-incubator.automotive.cloud/prod/v0/llm"/>
+      </label>
+      <label style="font-size:11px;color:var(--muted)">API Key（覆盖全局 Key）
+        <input id="h2ApiKey" placeholder="留空则使用全局 Key" type="password"/>
+      </label>
+      <label style="font-size:11px;color:var(--muted)">模型名称
+        <input id="h2Model" placeholder="DeepSeek-V4-Pro"/>
+      </label>
+      <label style="font-size:11px;color:var(--muted)">附加请求头（选填）
+        <input id="h2Headers" placeholder='{"X-Application-Name":"ai-editor-review"}'/>
+      </label>
+    </div>
+
+    <div id="hybridValidBox" style="display:none;border-radius:10px;padding:10px 14px;
+      margin-top:10px;font-size:12px;line-height:1.7"></div>
+
+    <div class="section-sep">Embedding 模型</div>
+    <label>Embedding 类型
+      <select id="cfgEmbProvider" onchange="onEmbChange()">
+        <option value="simple">简单模式（关键词匹配）</option>
+        <option value="sentence_transformers">本地模型（首次自动下载）</option>
+        <option value="openai_compatible_embeddings">API 接口</option>
+      </select>
+    </label>
+    <div id="embRemote" style="display:none">
+      <label>Embedding URL <input id="cfgEmbUrl" placeholder="Embedding Base URL"/></label>
+      <label>Embedding Key <input id="cfgEmbKey" placeholder="API Key"/></label>
+    </div>
+    <label>模型名称 <input id="cfgEmbModel" placeholder="shibing624/text2vec-base-chinese"/></label>
+
+    <div class="section-sep">向量存储后端</div>
+    <label>向量后端
+      <select id="cfgVecBackend">
+        <option value="simple">simple（关键词匹配）</option>
+        <option value="faiss_like">faiss_like（向量搜索）</option>
+        <option value="qdrant">qdrant（需额外部署）</option>
+      </select>
+    </label>
+
+    <div class="modal-footer">
+      <button class="btn-primary" style="flex:1" onclick="saveConfig()">保存配置</button>
+      <button class="btn-secondary" id="hybridTestBtn" onclick="testHybridConnection()" style="white-space:nowrap">🔌 测试两阶段连接</button>
+      <button class="btn-secondary" onclick="closeConfig()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Rules Modal ───────────────────────────────────────── -->
+<div class="modal-overlay" id="rulesOverlay" onclick="if(event.target===this)closeRules()">
+  <div class="modal">
+    <h3>📏 自定义审稿规则</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+      勾选要<b>忽略/禁用</b>的检查项。规则会在每次审稿时自动注入给 LLM。
+    </p>
+
+    <div id="rulesValidBox" style="display:none;border-radius:10px;padding:8px 12px;
+      margin-bottom:10px;font-size:12px"></div>
+
+    <!-- Built-in rule toggles (rendered by JS) -->
+    <div id="rulesList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+      <div style="color:var(--muted);font-size:12px">加载中…</div>
+    </div>
+
+    <!-- Rules file editor -->
+    <div class="section-sep" style="display:flex;align-items:center;justify-content:space-between">
+      <span>📄 个人规则文件 <code style="font-size:10px;color:#64748b">data/my_rules.md</code></span>
+      <div style="display:flex;gap:6px">
+        <button onclick="syncRulesFromFile()" class="btn-secondary"
+          style="padding:4px 10px;font-size:11px;white-space:nowrap">⬇ 从文件同步</button>
+        <button onclick="saveRulesFile()" class="btn-secondary"
+          style="padding:4px 10px;font-size:11px;white-space:nowrap">💾 保存文件</button>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
+      用 <code style="color:#93c5fd">- 规则内容</code> 格式写你的习惯，每行一条。
+      支持 Markdown 分节，<code style="color:#475569"><!-- 注释 --></code> 行会被忽略。
+      保存后自动同步到「自定义说明」并生效。
+    </p>
+    <textarea id="rulesFileContent" rows="10"
+      placeholder="# 我的规则&#10;&#10;## 格式习惯&#10;- 允许使用英文句点代替中文句号&#10;&#10;## 术语习惯&#10;- AI 不需要写全称&#10;- 允许省略主语"
+      style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+        background:rgba(0,0,0,.3);color:var(--text);font-family:'Cascadia Code',Consolas,monospace;
+        font-size:11px;resize:vertical;line-height:1.7;tab-size:2"></textarea>
+    <div id="rulesFileSyncInfo" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+
+    <!-- Custom text instructions -->
+    <div class="section-sep">快速补充说明（直接生效，不保存到文件）</div>
+    <textarea id="rulesCustomText" rows="3" placeholder="临时规则，如：不要检查专利号格式&#10;允许使用第一人称（我/我们）"
+      style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+        background:rgba(0,0,0,.3);color:var(--text);font-family:inherit;font-size:12px;
+        resize:vertical;line-height:1.6"></textarea>
+
+    <!-- Add custom rule button entry -->
+    <div class="section-sep">添加自定义规则条目</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <input id="newRuleName" placeholder="规则名称（如：允许简化引用格式）"
+        style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);
+          background:rgba(0,0,0,.2);color:var(--text);font-family:inherit;font-size:12px"/>
+      <input id="newRuleInstr" placeholder="注入给 LLM 的指令（如：不要检查引用的页码和版本号）"
+        style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);
+          background:rgba(0,0,0,.2);color:var(--text);font-family:inherit;font-size:12px"/>
+      <div style="display:flex;gap:6px">
+        <select id="newRuleDim" style="flex:1;padding:7px 8px;border-radius:8px;border:1px solid var(--border);
+          background:rgba(0,0,0,.2);color:var(--text);font-family:inherit;font-size:12px">
+          <option value="spelling">格式规范</option>
+          <option value="grammar">语法文字</option>
+          <option value="style">语气风格</option>
+          <option value="terminology">专业术语</option>
+          <option value="fact">事实核查</option>
+          <option value="logic">逻辑结构</option>
+          <option value="qa_check">题目校验</option>
+        </select>
+        <button class="btn-secondary" onclick="addCustomRule()" style="padding:7px 14px;white-space:nowrap">+ 添加</button>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-primary" style="flex:1" onclick="saveRules()">💾 保存规则</button>
+      <button class="btn-secondary" onclick="closeRules()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── KB Modal ─────────────────────────────────────────── -->
+<div class="modal-overlay" id="kbOverlay" onclick="if(event.target===this)closeKB()">
+  <div class="modal">
+    <h3>📚 知识库管理</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+      将 .txt / .md 参考文档放入 <code style="color:#93c5fd">data/kb/分类名/</code>，再点对应「重建」完成导入。
+    </p>
+    <div class="section-sep">新增分类</div>
+    <div style="display:flex;gap:8px">
+      <input id="newCatInput" placeholder="分类名，如 finance、medical" style="flex:1;padding:8px 10px;
+        border-radius:8px;border:1px solid var(--border);background:var(--panel2);
+        color:var(--text);font-family:inherit;font-size:12px"/>
+      <button class="btn-secondary" onclick="addKBCat()" style="padding:8px 14px;white-space:nowrap">+ 新增</button>
+    </div>
+    <div class="section-sep">已有分类</div>
+    <div id="kbCatList"><div style="color:var(--muted);font-size:12px">加载中…</div></div>
+    <div class="section-sep">从网页导入</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="kbImportUrl" placeholder="输入网页 URL" style="flex:1;min-width:200px;padding:8px 10px;
+        border-radius:8px;border:1px solid var(--border);background:var(--panel2);
+        color:var(--text);font-family:inherit;font-size:12px"/>
+      <select id="kbImportCat" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);
+        background:var(--panel2);color:var(--text);font-family:inherit;font-size:12px"></select>
+      <button class="btn-secondary" onclick="importKBUrl()" style="padding:8px 14px">导入</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" style="flex:1" onclick="closeKB()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tooltip ──────────────────────────────────────────── -->
+<div id="annTooltip" style="display:none;position:fixed;z-index:200;background:#0d1b30;
+  border:1px solid var(--border);border-radius:14px;padding:14px 16px;max-width:340px;
+  box-shadow:0 8px 36px rgba(0,0,0,.7);pointer-events:none">
+  <!-- Header: dim + sev + page -->
+  <div id="ttMeta" style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap"></div>
+  <!-- Original -->
+  <div id="ttOrig" style="font-size:11px;color:#94a3b8;background:rgba(0,0,0,.3);
+    border-left:3px solid #475569;padding:4px 8px;border-radius:4px;margin-bottom:8px;
+    word-break:break-all"></div>
+  <!-- Suggestion -->
+  <div id="ttSugg" style="font-size:13px;color:#86efac;font-weight:700;margin-bottom:5px;
+    display:flex;align-items:flex-start;gap:4px"><span>→</span><span id="ttSuggText"></span></div>
+  <!-- Reason -->
+  <div id="ttReason" style="font-size:11px;color:#94a3b8;line-height:1.5"></div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────────────────────────────────────────
+const DIMS = {
+  grammar:     {name:'语法文字',  icon:'📝', color:'var(--g-red)',    bg:'rgba(239,68,68,0.15)'},
+  spelling:    {name:'格式规范',  icon:'🔢', color:'var(--g-orange)', bg:'rgba(249,115,22,0.15)'},
+  style:       {name:'语气风格',  icon:'🎨', color:'var(--g-purple)', bg:'rgba(168,85,247,0.15)'},
+  terminology: {name:'专业术语',  icon:'🔬', color:'var(--g-cyan)',   bg:'rgba(6,182,212,0.15)'},
+  logic:       {name:'逻辑结构',  icon:'🧠', color:'var(--g-green)',  bg:'rgba(34,197,94,0.15)'},
+  fact:        {name:'事实核查',  icon:'🔍', color:'var(--g-yellow)', bg:'rgba(234,179,8,0.15)'},
+  qa_check:    {name:'题目校验',  icon:'📋', color:'#f43f5e',         bg:'rgba(244,63,94,0.15)'},
+};
+const DIM_COLORS = {
+  grammar:'#ef4444', spelling:'#f97316', style:'#a855f7',
+  terminology:'#06b6d4', logic:'#22c55e', fact:'#eab308', qa_check:'#f43f5e',
+};
+const TYPE_TO_DIM = {
+  grammar:'grammar', spelling:'spelling', format:'spelling',
+  style:'style', terminology:'terminology', logic:'logic',
+  fact:'fact', reference:'fact', qa_check:'qa_check',
+};
+const SEV_COLOR = {high:'#ef4444', medium:'#f59e0b', low:'#22c55e'};
+const DEFAULT_CATS = ['editor','general','law','biology','chemistry','physics'];
+const CAT_LABELS = {editor:'编辑规范',general:'通用',law:'法律',
+  biology:'生物',chemistry:'化学',physics:'物理'};
+
+// All 7 dimensions definition (matches backend)
+const ALL_DIMS_DEF = [
+  {key:'grammar',    name:'语法文字',  icon:'📝', color:'#ef4444', bg:'rgba(239,68,68,0.15)',    phase:1, defaultOn:true},
+  {key:'spelling',   name:'格式规范',  icon:'🔢', color:'#f97316', bg:'rgba(249,115,22,0.15)',   phase:1, defaultOn:true},
+  {key:'style',      name:'语气风格',  icon:'🎨', color:'#a855f7', bg:'rgba(168,85,247,0.15)',   phase:1, defaultOn:true},
+  {key:'terminology',name:'专业术语',  icon:'🔬', color:'#06b6d4', bg:'rgba(6,182,212,0.15)',    phase:2, defaultOn:true},
+  {key:'logic',      name:'逻辑结构',  icon:'🧠', color:'#22c55e', bg:'rgba(34,197,94,0.15)',    phase:2, defaultOn:true},
+  {key:'fact',       name:'事实核查',  icon:'🔍', color:'#eab308', bg:'rgba(234,179,8,0.15)',    phase:2, defaultOn:true},
+  {key:'qa_check',   name:'题目校验',  icon:'📋', color:'#f43f5e', bg:'rgba(244,63,94,0.15)',    phase:2, defaultOn:false},
+];
+
+// ──────────────────────────────────────────────────────────────────────────────
+// State
+// ──────────────────────────────────────────────────────────────────────────────
+let S = {
+  file: null,
+  taskId: null,
+  sse: null,
+  sourceText: '',
+  issues: [],
+  issueCounter: 0,
+  phase: {
+    1:{total:0,done:0,started:false,finished:false,elapsed:0},
+    2:{total:0,done:0,started:false,finished:false,elapsed:0},
+  },
+  dimStats: {},
+  status: 'idle',
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Dimension selector
+// ──────────────────────────────────────────────────────────────────────────────
+function buildDimSelector(){
+  const el = document.getElementById('dimSelector');
+  if(!el) return;
+  el.innerHTML = ALL_DIMS_DEF.map(d=>`
+    <div class="dim-chip ${d.defaultOn?'active':''}" id="dimchip-${d.key}"
+      style="--chip-color:${d.color};--chip-bg:${d.bg}"
+      onclick="toggleDim('${d.key}')">
+      <span class="dim-chip-dot"></span>
+      <span>${d.icon} ${d.name}</span>
+      <span style="font-size:9px;color:var(--muted);margin-left:auto">P${d.phase}</span>
+    </div>`).join('');
+}
+
+function toggleDim(key){
+  const el = document.getElementById('dimchip-'+key);
+  if(el) el.classList.toggle('active');
+}
+
+function getSelectedDims(){
+  return ALL_DIMS_DEF
+    .filter(d=>document.getElementById('dimchip-'+d.key)?.classList.contains('active'))
+    .map(d=>d.key);
+}
+
+function selectAllDims(){
+  ALL_DIMS_DEF.forEach(d=>{
+    const el = document.getElementById('dimchip-'+d.key);
+    if(el) el.classList.add('active');
+  });
+}
+
+function selectNoneDims(){
+  ALL_DIMS_DEF.forEach(d=>{
+    const el = document.getElementById('dimchip-'+d.key);
+    if(el) el.classList.remove('active');
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// UI helpers
+// ──────────────────────────────────────────────────────────────────────────────
+function setStatus(msg){
+  document.getElementById('headerStatus').textContent = msg;
+  document.getElementById('footerMsg').textContent = msg;
+}
+function setProgress(pct, label){
+  document.getElementById('progressFill').style.width = pct + '%';
+  if(label) document.getElementById('progressLabel').textContent = label;
+}
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function escA(s){return escH(s).replace(/"/g,'&quot;')}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Upload & file handling
+// ──────────────────────────────────────────────────────────────────────────────
+(function bindUpload(){
+  const zone = document.getElementById('uploadZone');
+  const fi = document.getElementById('fileInput');
+  ['dragenter','dragover'].forEach(e=>zone.addEventListener(e,ev=>{
+    ev.preventDefault(); zone.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(e=>zone.addEventListener(e,ev=>{
+    ev.preventDefault(); zone.classList.remove('drag');
+  }));
+  zone.addEventListener('drop', ev=>{
+    const f = ev.dataTransfer.files[0];
+    if(f) selectFile(f);
+  });
+  fi.addEventListener('change', ev=>{
+    if(ev.target.files[0]) selectFile(ev.target.files[0]);
+  });
+})();
+
+function selectFile(f){
+  const ext = f.name.split('.').pop().toLowerCase();
+  if(!['pdf','docx'].includes(ext)){
+    alert('仅支持 PDF 和 DOCX 文件'); return;
+  }
+  S.file = f;
+  document.getElementById('uploadZone').style.display = 'none';
+  document.getElementById('fileChip').style.display = 'flex';
+  document.getElementById('fcIcon').textContent = ext==='pdf'?'📑':'📝';
+  document.getElementById('fcName').textContent = f.name;
+  const sz = f.size>1048576?(f.size/1048576).toFixed(1)+' MB':(f.size/1024).toFixed(0)+' KB';
+  document.getElementById('fcMeta').textContent = ext.toUpperCase() + ' · ' + sz;
+  const btn = document.getElementById('startBtn');
+  btn.disabled = false;
+  btn.textContent = '🚀 开始审稿';
+  // Show page range hint for PDFs only
+  const pgSection = document.querySelector('#pageStart')?.closest('div[style*="background"]');
+  if(pgSection) pgSection.style.opacity = ext === 'pdf' ? '1' : '0.4';
+  setStatus('已选择：' + f.name);
+}
+
+function updatePageRangeLabel(){
+  const s = parseInt(document.getElementById('pageStart').value) || 1;
+  const e = parseInt(document.getElementById('pageEnd').value) || 0;
+  const lbl = document.getElementById('pageRangeLabel');
+  if(!lbl) return;
+  lbl.textContent = e > 0 ? `第 ${s} – ${e} 页` : `第 ${s} 页起全文`;
+}
+
+function setPageRange(start, end){
+  document.getElementById('pageStart').value = start;
+  document.getElementById('pageEnd').value = end;
+  updatePageRangeLabel();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Review task
+// ──────────────────────────────────────────────────────────────────────────────
+async function startReview(){
+  if(!S.file) return;
+  const selectedDims = getSelectedDims();
+  if(selectedDims.length === 0){
+    setStatus('⚠️ 请至少选择一个审稿维度');
+    return;
+  }
+  resetState();
+  S.status = 'processing';
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('startBtn').textContent = '审稿中…';
+  document.getElementById('cancelBtn').style.display = '';
+  document.getElementById('exportBtn').style.display = 'none';
+
+  const pageStart = parseInt(document.getElementById('pageStart').value) || 1;
+  const pageEnd   = parseInt(document.getElementById('pageEnd').value)   || 0;
+  const pageDesc  = pageEnd > 0 ? `第${pageStart}-${pageEnd}页` : `第${pageStart}页起`;
+  setStatus('正在提交任务…');
+  setProgress(3, `正在上传文档（${pageDesc}）…`);
+
+  const fd = new FormData();
+  fd.append('file', S.file);
+  fd.append('kb_category', document.getElementById('kbCatSelect').value);
+  fd.append('scan_mode', document.getElementById('scanModeSelect').value);
+  fd.append('export_markdown', 'false');
+  fd.append('export_csv', 'false');
+  fd.append('dimensions', selectedDims.join(','));
+  fd.append('page_start', String(pageStart));
+  fd.append('page_end',   String(pageEnd));
+
+  try {
+    const res = await fetch('/tasks/review_document', {method:'POST', body:fd});
+    const data = await res.json();
+    if(!data.ok || !data.task_id){
+      setStatus('提交失败：' + (data.message||'未知错误'));
+      resetButtons(); return;
+    }
+    S.taskId = data.task_id;
+    setStatus('任务已入队，建立实时连接… 维度：' + selectedDims.length + '个');
+    connectSSE(data.task_id);
+  } catch(e){
+    setStatus('错误：' + e.message);
+    resetButtons();
+  }
+}
+
+async function cancelTask(){
+  if(!S.taskId) return;
+  if(S.sse){ S.sse.close(); S.sse = null; }
+  try{ await fetch('/tasks/'+S.taskId+'/cancel', {method:'POST'}); }catch(e){}
+  setStatus('任务已取消');
+  setProgress(0,'已取消');
+  document.getElementById('cancelBtn').style.display = 'none';
+  resetButtons();
+  S.status = 'cancelled';
+}
+
+function resetButtons(){
+  const btn = document.getElementById('startBtn');
+  btn.disabled = !S.file;
+  btn.textContent = S.file ? '🚀 开始六维审稿' : '选择文档后开始审稿';
+  document.getElementById('cancelBtn').style.display = 'none';
+}
+
+function resetState(){
+  S.issues = []; S.issueCounter = 0; S.sourceText = ''; S.dimStats = {};
+  S.phase = {
+    1:{total:0,done:0,started:false,finished:false,elapsed:0},
+    2:{total:0,done:0,started:false,finished:false,elapsed:0},
+  };
+  document.getElementById('issuesList').innerHTML =
+    '<div class="issues-empty">审稿中，问题将实时显示…</div>';
+  document.getElementById('issueCountBadge').textContent = '0';
+  document.getElementById('totalIssues').textContent = '—';
+  document.getElementById('summaryBox').style.display = 'none';
+  document.getElementById('dimStats').innerHTML =
+    '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px 0">等待审稿数据…</div>';
+  document.getElementById('p1Badge').textContent = '等待中';
+  document.getElementById('p2Badge').textContent = '等待中';
+  document.getElementById('p1Fill').style.width = '0%';
+  document.getElementById('p2Fill').style.width = '0%';
+  document.getElementById('p1Timing').textContent = '';
+  document.getElementById('p2Timing').textContent = '';
+  document.getElementById('phase1Card').className = 'phase-card';
+  document.getElementById('phase2Card').className = 'phase-card';
+  document.getElementById('sourceText').innerHTML =
+    '<div class="src-empty">正在提取文档内容…</div>';
+  setProgress(3,'');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SSE client
+// ──────────────────────────────────────────────────────────────────────────────
+function connectSSE(taskId){
+  if(S.sse){ S.sse.close(); }
+  S.sse = new EventSource('/stream/' + taskId);
+
+  S.sse.addEventListener('started', e=>{
+    setStatus('文档处理中…'); setProgress(8,'开始处理文档');
+  });
+  S.sse.addEventListener('hybrid_mode', e=>{
+    const d = JSON.parse(e.data);
+    // Update phase card subtitles to show which model is being used
+    document.getElementById('p1Dims').textContent =
+      `语法文字 · 格式规范 · 语气风格  [${d.phase1_model||''}]`;
+    document.getElementById('p2Dims').textContent =
+      `专业术语 · 逻辑结构 · 事实核查  [${d.phase2_model||''}]`;
+    setStatus('🔀 混合模型：' + (d.message || ''));
+  });
+  S.sse.addEventListener('doc_parsed', e=>{
+    const d = JSON.parse(e.data);
+    S.sourceText = d.source_text || '';
+    const pgInfo = d.page_start ? `第${d.page_start}-${d.page_end||'末'}页 · ` : '';
+    document.getElementById('srcInfo').textContent =
+      pgInfo + (d.text_length ? `${d.text_length.toLocaleString()} 字 · ${d.total_chunks} 段` : '');
+    renderSource();
+    setProgress(12, d.message || '文档解析完成');
+    setStatus(d.message || '开始审稿');
+  });
+  S.sse.addEventListener('phase_start', e=>{
+    const d = JSON.parse(e.data);
+    const ph = d.phase;
+    S.phase[ph].started = true;
+    S.phase[ph].total = d.total_tasks || 1;
+    S.phase[ph].done = 0;
+    const card = document.getElementById('phase'+ph+'Card');
+    card.className = 'phase-card active';
+    const modelLabel = d.model ? ` [${d.model}]` : '';
+    document.getElementById('p'+ph+'Badge').textContent = '运行中…' + modelLabel;
+    setStatus(d.message || 'Phase ' + ph + ' 运行中');
+    setProgress(ph===1?15:55, d.message);
+  });
+  S.sse.addEventListener('chunk_done', e=>{
+    const d = JSON.parse(e.data);
+    const issues = d.issues || [];
+    // Assign client-side IDs
+    issues.forEach(iss=>{ iss._id = 'i' + (++S.issueCounter); });
+    S.issues.push(...issues);
+    // Update dim stats
+    issues.forEach(iss=>{
+      const dim = iss.dimension || TYPE_TO_DIM[iss.issue_type] || iss.issue_type;
+      S.dimStats[dim] = (S.dimStats[dim]||0) + 1;
+    });
+    // Determine phase from dimension
+    const dimPhase = ['grammar','spelling','style'].includes(d.dimension) ? 1 : 2;
+    S.phase[dimPhase].done++;
+    // Update phase progress bar
+    const ph = dimPhase;
+    const pct = S.phase[ph].total > 0
+      ? Math.round(S.phase[ph].done / S.phase[ph].total * 100) : 0;
+    document.getElementById('p'+ph+'Fill').style.width = pct+'%';
+    document.getElementById('p'+ph+'Badge').textContent =
+      S.phase[ph].done + '/' + S.phase[ph].total + ' 完成';
+    // Global progress
+    const globalPct = ph===1 ? 15+Math.round(pct*0.4) : 55+Math.round(pct*0.35);
+    setProgress(globalPct, (d.dim_name||d.dimension) + ' 完成 ' + issues.length + ' 个问题');
+    // Update UI
+    updateDimStats();
+    document.getElementById('totalIssues').textContent = S.issues.length;
+    document.getElementById('issueCountBadge').textContent = S.issues.length;
+    renderIssues();
+    scheduleAnnotationRender();
+  });
+  S.sse.addEventListener('chunk_error', e=>{
+    const d = JSON.parse(e.data);
+    console.warn('chunk error:', d.dimension, d.error);
+  });
+  S.sse.addEventListener('phase_done', e=>{
+    const d = JSON.parse(e.data);
+    const ph = d.phase;
+    S.phase[ph].finished = true;
+    S.phase[ph].elapsed = d.elapsed_s || 0;
+    const card = document.getElementById('phase'+ph+'Card');
+    card.className = 'phase-card done';
+    document.getElementById('p'+ph+'Badge').textContent = '✅ 完成';
+    document.getElementById('p'+ph+'Fill').style.width = '100%';
+    document.getElementById('p'+ph+'Timing').textContent =
+      d.elapsed_s ? '耗时 '+d.elapsed_s+'s · 发现 '+d.issue_count+' 处问题' : '';
+  });
+  S.sse.addEventListener('completed', e=>{
+    const d = JSON.parse(e.data);
+    S.status = 'completed';
+    setProgress(100, '审稿完成');
+    setStatus('✅ 审稿完成，共 ' + d.total_issues + ' 处问题');
+    document.getElementById('totalIssues').textContent = d.total_issues;
+    document.getElementById('issueCountBadge').textContent = S.issues.length;
+    if(d.summary){
+      document.getElementById('summaryText').textContent = d.summary;
+      document.getElementById('summaryBox').style.display = '';
+    }
+    document.getElementById('exportBtn').style.display = '';
+    document.getElementById('cancelBtn').style.display = 'none';
+    resetButtons();
+    renderSource(); // Final full render with all annotations
+    setTimeout(loadOutputFiles, 800); // Refresh output file list
+  });
+  S.sse.addEventListener('task_failed', e=>{
+    const d = JSON.parse(e.data);
+    S.status = 'failed';
+    setStatus('❌ 任务失败：' + (d.error||''));
+    setProgress(0, '任务失败');
+    showErrorBanner('任务执行失败', d.error || '未知错误', '请检查文档格式或重试。');
+    resetButtons();
+  });
+  S.sse.addEventListener('config_error', e=>{
+    const d = JSON.parse(e.data);
+    S.status = 'failed';
+    setProgress(0, '⚙️ 配置错误');
+    setStatus('⚙️ 配置错误：' + d.message);
+    showErrorBanner(
+      '⚙️ 模型配置错误 — 审稿无法进行',
+      d.message,
+      d.suggestion || '请点击右上角「配置模型」修复后重试。',
+      d.diagnosis || '',
+      true // showConfigBtn
+    );
+    resetButtons();
+  });
+  S.sse.addEventListener('stream_end', ()=>{ S.sse.close(); S.sse = null; });
+  S.sse.onerror = ()=>{
+    if(S.status === 'completed' || S.status === 'failed' || S.status === 'cancelled') return;
+    // SSE disconnected - fall back to polling
+    S.sse = null;
+    if(S.taskId) startPolling(S.taskId);
+  };
+}
+
+// Fallback polling (if SSE fails)
+let pollTimer = null;
+function startPolling(taskId){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async()=>{
+    try{
+      const res = await fetch('/tasks/'+taskId);
+      const d = await res.json();
+      if(!d.ok) return;
+      setProgress(d.progress||0, d.message||'');
+      setStatus(d.message||d.status);
+      if(d.status==='completed'){
+        clearInterval(pollTimer);
+        S.status = 'completed';
+        if(d.result){
+          const issues = d.result.issues||[];
+          issues.forEach(iss=>{ if(!iss._id) iss._id='i'+(++S.issueCounter); });
+          S.issues = issues;
+          S.dimStats = d.result.dimension_stats || buildDimStats(issues);
+          if(d.source_text) S.sourceText = d.source_text;
+          if(d.result.summary){
+            document.getElementById('summaryText').textContent = d.result.summary;
+            document.getElementById('summaryBox').style.display = '';
+          }
+        }
+        document.getElementById('totalIssues').textContent = S.issues.length;
+        document.getElementById('issueCountBadge').textContent = S.issues.length;
+        updateDimStats(); renderIssues(); renderSource();
+        document.getElementById('exportBtn').style.display = '';
+        resetButtons();
+      } else if(d.status==='failed'){
+        clearInterval(pollTimer);
+        setStatus('❌ 失败：'+(d.error||''));
+        resetButtons();
+      } else if(d.status==='cancelled'){
+        clearInterval(pollTimer); resetButtons();
+      }
+    }catch(e){}
+  }, 2000);
+}
+function buildDimStats(issues){
+  const s={};
+  issues.forEach(i=>{const d=i.dimension||TYPE_TO_DIM[i.issue_type]||i.issue_type;s[d]=(s[d]||0)+1;});
+  return s;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Source text annotation rendering
+// ──────────────────────────────────────────────────────────────────────────────
+let renderTimer = null;
+function scheduleAnnotationRender(){
+  if(renderTimer) clearTimeout(renderTimer);
+  renderTimer = setTimeout(renderSource, 500);
+}
+
+// Build a per-page map from the issues list for margin annotations
+function _buildPageIssueMap(){
+  const map = {}; // page -> [issue, ...]
+  for(const iss of S.issues){
+    const pg = iss.page;
+    if(pg){ map[pg] = map[pg] || []; map[pg].push(iss); }
+  }
+  return map;
+}
+
+function renderSource(){
+  const el = document.getElementById('sourceText');
+  if(!S.sourceText){
+    el.innerHTML = '<div class="src-empty">上传文档后，原文将在此显示，<br>审稿问题将以彩色高亮标注。</div>';
+    return;
+  }
+
+  // Split into lines to track approximate page changes
+  const lines = S.sourceText.split('\n');
+  const pageIssueMap = _buildPageIssueMap();
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px;line-height:1.8">';
+  let lineNum = 0;
+  let lastPage = 0;
+
+  for(const rawLine of lines){
+    if(!rawLine.trim()) continue;
+    lineNum++;
+
+    // Try to detect page number from issues that match this line
+    let linePage = null;
+    for(const iss of S.issues){
+      if(iss.page && rawLine.includes((iss.original||'').slice(0,20))){
+        linePage = iss.page; break;
+      }
+    }
+    if(linePage && linePage !== lastPage){
+      lastPage = linePage;
+      // Page divider row
+      const pageIssues = pageIssueMap[linePage] || [];
+      const sevH = pageIssues.filter(i=>i.severity==='high').length;
+      const badge = sevH > 0
+        ? `<span style="color:#ef4444;font-size:10px;margin-left:6px">⚠${sevH}严重</span>` : '';
+      html += `<tr><td colspan="3" style="padding:6px 0 2px;border-top:1px dashed rgba(59,130,246,.2)">
+        <span style="font-size:11px;font-weight:700;color:#3b82f6;
+          background:rgba(59,130,246,.1);border-radius:4px;padding:2px 8px">
+          📄 第 ${linePage} 页
+        </span>${badge}</td></tr>`;
+    }
+
+    // Annotate the line content
+    const annotated = annotateText(rawLine);
+    const issuesOnLine = S.issues.filter(i=>
+      i.page === (linePage || lastPage) &&
+      rawLine.includes((i.original||'').slice(0,15))
+    );
+
+    // Line number cell
+    const lineNumHtml = `<span style="font-size:10px;color:#334155;user-select:none">${lineNum}</span>`;
+
+    // Right margin: show count of issues on this line
+    const marginHtml = issuesOnLine.length > 0
+      ? `<div style="display:flex;gap:3px;justify-content:flex-end;flex-wrap:wrap">${
+          issuesOnLine.slice(0,3).map(i=>{
+            const c = DIM_COLORS[i.dimension || TYPE_TO_DIM[i.issue_type]||'grammar'] || '#3b82f6';
+            const dim = DIMS[i.dimension || TYPE_TO_DIM[i.issue_type] || 'grammar'] || DIMS.grammar;
+            return `<span onclick="focusAnn('${i._id}')" title="${escA(i.suggestion||'')}"
+              style="cursor:pointer;font-size:9px;padding:1px 5px;border-radius:3px;
+                background:${c}20;color:${c};border:1px solid ${c}40;white-space:nowrap">
+              ${dim.icon}
+            </span>`;
+          }).join('')
+          + (issuesOnLine.length > 3 ? `<span style="font-size:9px;color:var(--muted)">+${issuesOnLine.length-3}</span>` : '')
+        }</div>` : '';
+
+    html += `<tr style="vertical-align:top">
+      <td style="width:28px;text-align:right;padding:0 6px 0 0;color:#334155;font-size:10px;
+        font-family:monospace;white-space:nowrap;user-select:none;vertical-align:top;padding-top:3px">
+        ${lineNum}
+      </td>
+      <td style="padding:1px 4px;color:#c8d8ee">${annotated}</td>
+      <td style="width:60px;padding:1px 0 1px 4px;vertical-align:top">${marginHtml}</td>
+    </tr>`;
+  }
+  html += '</table>';
+  el.innerHTML = html;
+}
+
+function annotateText(text){
+  const matches = [];
+  for(const issue of S.issues){
+    if(!issue.original || issue.original.length < 2) continue;
+    let pos = 0;
+    while(pos < text.length){
+      const idx = text.indexOf(issue.original, pos);
+      if(idx === -1) break;
+      matches.push({start:idx, end:idx+issue.original.length, issue});
+      pos = idx + 1;
+    }
+  }
+  if(!matches.length) return escH(text);
+  matches.sort((a,b)=>a.start-b.start||(b.end-a.end));
+  const resolved = [];
+  let lastEnd = 0;
+  for(const m of matches){
+    if(m.start >= lastEnd){ resolved.push(m); lastEnd = m.end; }
+  }
+  let html = '', pos = 0;
+  for(const m of resolved){
+    html += escH(text.slice(pos, m.start));
+    const dim    = m.issue.dimension || TYPE_TO_DIM[m.issue.issue_type] || 'grammar';
+    const color  = DIM_COLORS[dim] || '#3b82f6';
+    const cfg    = DIMS[dim] || DIMS.grammar;
+    const bg     = cfg.bg || 'rgba(59,130,246,0.15)';
+    const sevColor = SEV_COLOR[m.issue.severity] || '#94a3b8';
+    const sugg   = escA(m.issue.suggestion||'');
+    const reason = escA(m.issue.reason||'');
+    const sev    = escA(m.issue.severity||'');
+    const dimName = escA(cfg.name||dim);
+    // Underline style varies by severity
+    const underline = m.issue.severity === 'high' ? `3px solid ${color}` :
+                      m.issue.severity === 'low'  ? `1px dashed ${color}` : `2px solid ${color}`;
+    html += `<mark class="ann" data-id="${m.issue._id}"
+      data-sugg="${sugg}" data-reason="${reason}" data-sev="${sev}" data-dim="${dimName}"
+      data-pg="${m.issue.page||''}"
+      style="background:${bg};border-bottom:${underline};border-radius:2px;cursor:pointer;padding:1px 0"
+      onmouseenter="showTooltip(event,this)" onmouseleave="hideTooltip()"
+      onclick="focusIssue('${m.issue._id}')">${escH(m.issue.original)}</mark>`;
+    pos = m.end;
+  }
+  html += escH(text.slice(pos));
+  return html;
+}
+
+function showTooltip(ev, el){
+  const tt = document.getElementById('annTooltip');
+  const issId = el.dataset.id;
+  const issue = S.issues.find(i=>i._id===issId) || {};
+  const dim    = issue.dimension || TYPE_TO_DIM[issue.issue_type||''] || 'grammar';
+  const cfg    = DIMS[dim] || DIMS.grammar;
+  const color  = DIM_COLORS[dim] || '#3b82f6';
+  const sev    = issue.severity || el.dataset.sev || '';
+  const sevColor = SEV_COLOR[sev] || '#94a3b8';
+  const sevLabel = {high:'🔴 严重',medium:'🟡 中等',low:'🟢 轻微'}[sev] || sev;
+  const pg     = issue.page || el.dataset.pg || '';
+
+  // Meta row
+  document.getElementById('ttMeta').innerHTML =
+    `<span style="font-size:11px;font-weight:700;color:${color};background:${cfg.bg};
+      border-radius:4px;padding:2px 7px">${cfg.icon} ${cfg.name}</span>
+     <span style="font-size:11px;color:${sevColor}">${sevLabel}</span>
+     ${pg ? `<span style="font-size:11px;color:#93c5fd;background:rgba(59,130,246,.15);
+       border-radius:4px;padding:2px 7px;margin-left:auto">📄 第${pg}页</span>` : ''}`;
+
+  // Original text
+  const origEl = document.getElementById('ttOrig');
+  origEl.textContent = issue.original || el.textContent || '';
+  origEl.style.borderLeftColor = color;
+
+  // Suggestion
+  document.getElementById('ttSuggText').textContent = el.dataset.sugg || issue.suggestion || '';
+  document.getElementById('ttReason').textContent   = el.dataset.reason || issue.reason || '';
+
+  tt.style.display = 'block';
+  const x = Math.min(ev.clientX + 14, window.innerWidth  - 360);
+  const y = Math.min(ev.clientY + 14, window.innerHeight - 180);
+  tt.style.left = x + 'px';
+  tt.style.top  = y + 'px';
+}
+function hideTooltip(){ document.getElementById('annTooltip').style.display='none'; }
+
+function focusIssue(id){
+  const card = document.getElementById('issue-'+id);
+  if(card){
+    card.scrollIntoView({behavior:'smooth',block:'nearest'});
+    card.classList.add('highlighted');
+    setTimeout(()=>card.classList.remove('highlighted'), 2000);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Dimension stats
+// ──────────────────────────────────────────────────────────────────────────────
+function updateDimStats(){
+  const total = Object.values(S.dimStats).reduce((a,b)=>a+b,0);
+  const el = document.getElementById('dimStats');
+  if(!total){
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px 0">暂无数据</div>';
+    return;
+  }
+  el.innerHTML = Object.entries(DIMS).map(([key,cfg])=>{
+    const count = S.dimStats[key]||0;
+    const pct = total>0 ? Math.round(count/total*100) : 0;
+    const color = DIM_COLORS[key]||'#3b82f6';
+    return `<div class="dim-row">
+      <div class="dim-row-hdr">
+        <span class="dim-row-name">${cfg.icon} ${cfg.name}</span>
+        <span class="dim-row-count" style="color:${color}">${count}</span>
+      </div>
+      <div class="dim-bar-bg">
+        <div class="dim-bar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Issues list rendering — three view modes: dim | page | flat
+// ──────────────────────────────────────────────────────────────────────────────
+let S_viewMode = 'dim';   // 'dim' | 'page' | 'flat'
+const S_collapsed = {};   // group-key -> bool
+
+function setViewMode(mode){
+  S_viewMode = mode;
+  // Update toggle button styles
+  ['dim','page','flat'].forEach(m=>{
+    const btn = document.getElementById('viewBy'+m.charAt(0).toUpperCase()+m.slice(1));
+    if(!btn) return;
+    btn.style.background = m===mode ? 'var(--primary)' : 'var(--panel2)';
+    btn.style.color      = m===mode ? '#fff'           : 'var(--muted)';
+    btn.style.fontWeight = m===mode ? '700'            : '600';
+  });
+  renderIssues();
+}
+
+function _applyFilters(issues){
+  const fd = document.getElementById('filterDim').value;
+  const fs = document.getElementById('filterSev').value;
+  return issues.filter(i=>{
+    const dim = i.dimension || TYPE_TO_DIM[i.issue_type] || i.issue_type;
+    return (!fd || dim===fd) && (!fs || i.severity===fs);
+  });
+}
+
+function _issueCardHtml(issue, idx){
+  const dim   = issue.dimension || TYPE_TO_DIM[issue.issue_type] || 'grammar';
+  const cfg   = DIMS[dim] || DIMS.grammar;
+  const color = DIM_COLORS[dim] || '#3b82f6';
+  const sc    = SEV_COLOR[issue.severity] || '#94a3b8';
+  const pg    = issue.page || '';
+  // Page badge — prominent
+  const pageBadge = pg
+    ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;
+        color:#93c5fd;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);
+        border-radius:6px;padding:2px 8px;margin-left:auto;flex-shrink:0">
+        📄 第${pg}页
+       </span>` : '';
+  const sevLabel = {high:'严重',medium:'中等',low:'轻微'}[issue.severity] || issue.severity || '';
+  const sevColor = sc;
+  return `<div class="issue-card" id="issue-${issue._id}" onclick="focusAnn('${issue._id}')">
+    <div class="issue-card-hdr" style="flex-wrap:nowrap">
+      <span style="font-size:10px;color:#475569;min-width:22px;flex-shrink:0">#${idx}</span>
+      <span class="dim-badge" style="background:${cfg.bg};color:${color};border-color:${color}40;flex-shrink:0">
+        ${cfg.icon} ${cfg.name}
+      </span>
+      <span style="font-size:10px;font-weight:700;color:${sevColor};padding:2px 6px;
+        background:${sevColor}18;border-radius:4px;flex-shrink:0">${sevLabel}</span>
+      ${issue.needs_review ? '<span class="nr-badge" style="flex-shrink:0">⚠ 需复核</span>' : ''}
+      ${pageBadge}
+    </div>
+    <div class="issue-orig">${escH(issue.original||'')}</div>
+    <div class="issue-sugg">→ ${escH(issue.suggestion||'')}</div>
+    <div class="issue-reason" style="color:var(--muted)">${escH(issue.reason||'')}</div>
+  </div>`;
+}
+
+function _groupHtml(groupKey, label, color, issues, startIdx){
+  const isCollapsed = !!S_collapsed[groupKey];
+  const sevH = issues.filter(i=>i.severity==='high').length;
+  const sevM = issues.filter(i=>i.severity==='medium').length;
+  const sevDots = (sevH ? `<span style="color:#ef4444">●${sevH}严重</span> ` : '')
+                + (sevM ? `<span style="color:#f59e0b">●${sevM}中等</span>` : '');
+  const chevron = isCollapsed ? '▶' : '▼';
+  const bodyStyle = isCollapsed
+    ? 'max-height:0;overflow:hidden'
+    : `max-height:${issues.length * 140 + 20}px;overflow:hidden`;
+  const cards = issues.map((iss, i) => _issueCardHtml(iss, startIdx + i)).join('');
+  return `
+    <div class="group-hdr" onclick="toggleGroup('${escH(groupKey)}')" style="border-color:${color}30">
+      <div class="group-hdr-title" style="color:${color}">${escH(label)}</div>
+      <div class="group-hdr-count">
+        <span style="font-size:11px">${sevDots}</span>
+        <span style="background:rgba(255,255,255,.07);border-radius:20px;padding:2px 8px;font-size:11px">
+          ${issues.length} 处
+        </span>
+        <span style="font-size:10px;color:var(--muted)">${chevron}</span>
+      </div>
+    </div>
+    <div id="grp-${escH(groupKey)}" style="${bodyStyle};transition:max-height .25s ease">${cards}</div>`;
+}
+
+function toggleGroup(key){
+  S_collapsed[key] = !S_collapsed[key];
+  const el = document.getElementById('grp-'+key);
+  if(!el) return;
+  if(S_collapsed[key]){
+    el.style.maxHeight = '0';
+    el.style.overflow  = 'hidden';
+  } else {
+    el.style.maxHeight = el.children.length * 140 + 'px';
+    el.style.overflow  = 'hidden';
+    // Let it expand then remove height cap
+    setTimeout(()=>{ if(!S_collapsed[key]) el.style.maxHeight = 'none'; }, 280);
+  }
+  // Flip chevron in header
+  const hdr = el.previousElementSibling;
+  if(hdr){
+    const ch = hdr.querySelector('.group-hdr-count span:last-child');
+    if(ch) ch.textContent = S_collapsed[key] ? '▶' : '▼';
+  }
+}
+
+function renderIssues(){
+  const filtered = _applyFilters(S.issues);
+  const el = document.getElementById('issuesList');
+  if(!filtered.length){
+    el.innerHTML = S.issues.length
+      ? '<div class="issues-empty">无匹配问题</div>'
+      : '<div class="issues-empty">审稿中，问题将实时显示…</div>';
+    return;
+  }
+
+  if(S_viewMode === 'flat'){
+    el.innerHTML = filtered.map((iss,i)=>_issueCardHtml(iss, i+1)).join('');
+    return;
+  }
+
+  if(S_viewMode === 'page'){
+    // Group by page number
+    const byPage = {};
+    for(const iss of filtered){
+      const pg = iss.page || 0;
+      byPage[pg] = byPage[pg] || [];
+      byPage[pg].push(iss);
+    }
+    const pages = Object.keys(byPage)
+      .map(Number)
+      .sort((a,b)=>a-b);
+    let idx = 1;
+    el.innerHTML = pages.map(pg=>{
+      const label = pg === 0 ? '（未知页码）' : `第 ${pg} 页`;
+      const html  = _groupHtml('pg_'+pg, label, '#3b82f6', byPage[pg], idx);
+      idx += byPage[pg].length;
+      return html;
+    }).join('');
+    return;
+  }
+
+  // Default: group by dimension (dim)
+  const DIM_ORDER = ['grammar','spelling','style','terminology','logic','fact','qa_check'];
+  const byDim = {};
+  for(const iss of filtered){
+    const dk = iss.dimension || TYPE_TO_DIM[iss.issue_type] || iss.issue_type;
+    byDim[dk] = byDim[dk] || [];
+    byDim[dk].push(iss);
+  }
+  const orderedKeys = [
+    ...DIM_ORDER.filter(k => byDim[k]),
+    ...Object.keys(byDim).filter(k => !DIM_ORDER.includes(k)),
+  ];
+  let idx = 1;
+  el.innerHTML = orderedKeys.map(dk=>{
+    const cfg   = DIMS[dk] || DIMS.grammar;
+    const color = DIM_COLORS[dk] || '#3b82f6';
+    const label = `${cfg.icon} ${cfg.name}`;
+    const html  = _groupHtml('dim_'+dk, label, color, byDim[dk], idx);
+    idx += byDim[dk].length;
+    return html;
+  }).join('');
+}
+
+function focusAnn(id){
+  const marks = document.querySelectorAll(`mark.ann[data-id="${id}"]`);
+  if(marks.length){
+    marks[0].scrollIntoView({behavior:'smooth', block:'center'});
+    marks.forEach(m=>{
+      m.style.outline = '2px solid white';
+      setTimeout(()=>m.style.outline='', 2000);
+    });
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Output files panel
+// ──────────────────────────────────────────────────────────────────────────────
+async function loadOutputFiles(){
+  try{
+    const res = await fetch('/output/list');
+    const data = await res.json();
+    const files = data.files || [];
+    const el = document.getElementById('outputFilesList');
+    if(!el) return;
+    if(!files.length){
+      el.innerHTML = '<div style="color:var(--muted);font-size:11px;text-align:center;padding:8px 0">暂无输出文件</div>';
+      return;
+    }
+    const typeIcon = {json:'📋', txt:'📄', md:'📝', csv:'📊', docx:'📑'};
+    el.innerHTML = files.map(f=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;
+        border-bottom:1px solid var(--border)">
+        <span style="font-size:14px;cursor:pointer"
+          onclick="window.open('/output/download/${escH(f.name)}','_blank')">${typeIcon[f.type]||'📄'}</span>
+        <div style="flex:1;overflow:hidden;cursor:pointer"
+          onclick="window.open('/output/download/${escH(f.name)}','_blank')">
+          <div style="font-size:11px;color:var(--text);white-space:nowrap;
+            overflow:hidden;text-overflow:ellipsis">${escH(f.name)}</div>
+          <div style="font-size:10px;color:var(--muted)">${(f.size/1024).toFixed(1)} KB</div>
+        </div>
+        <span style="font-size:10px;color:#3b82f6;cursor:pointer"
+          onclick="window.open('/output/download/${escH(f.name)}','_blank')">↓</span>
+        <span style="font-size:10px;color:#ef4444;cursor:pointer"
+          onclick="deleteOutputFile('${escH(f.name)}')" title="删除">✕</span>
+      </div>`).join('');
+  }catch(e){}
+}
+
+async function clearAllOutput(){
+  if(!confirm('确认清空所有输出文件？此操作不可撤销。')) return;
+  const res = await fetch('/output/clear', {method:'POST'});
+  const data = await res.json();
+  setStatus(data.message || '已清空');
+  loadOutputFiles();
+}
+
+async function deleteOutputFile(filename){
+  const res = await fetch('/output/'+encodeURIComponent(filename), {method:'DELETE'});
+  const data = await res.json();
+  if(data.ok) loadOutputFiles();
+  else setStatus('删除失败：' + (data.message||''));
+}
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Export
+// ──────────────────────────────────────────────────────────────────────────────
+function exportDocx(){
+  if(!S.taskId){ alert('没有可导出的任务'); return; }
+  window.open('/tasks/'+S.taskId+'/export_docx', '_blank');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Error banner
+// ──────────────────────────────────────────────────────────────────────────────
+function showErrorBanner(title, message, suggestion, detail='', showConfigBtn=false){
+  // Show in dashboard area
+  const summaryBox = document.getElementById('summaryBox');
+  const summaryText = document.getElementById('summaryText');
+  summaryBox.style.display = '';
+  summaryText.innerHTML = `<div style="color:#f87171;font-weight:700;margin-bottom:6px">${escH(title)}</div>
+    <div style="color:#fcd34d;margin-bottom:6px">${escH(message)}</div>
+    <div style="color:#94a3b8;font-size:11px;margin-bottom:${detail?'6px':'0'}">${escH(suggestion)}</div>
+    ${detail ? `<div style="color:#475569;font-size:10px;font-family:monospace;background:rgba(0,0,0,.3);padding:5px 8px;border-radius:6px;margin-top:4px">${escH(detail)}</div>` : ''}
+    ${showConfigBtn ? '<button onclick="closeConfig();openConfig()" style="margin-top:8px;padding:6px 14px;border-radius:8px;border:1px solid #3b82f6;background:rgba(59,130,246,.15);color:#93c5fd;cursor:pointer;font-size:12px;font-family:inherit">⚙ 打开配置</button>' : ''}`;
+}
+
+function hideCfgValidBox(){
+  const el = document.getElementById('cfgValidBox');
+  if(el) el.style.display = 'none';
+}
+
+function showCfgValidResult(data){
+  const el = document.getElementById('cfgValidBox');
+  if(!el) return;
+  el.style.display = '';
+  if(data.ok){
+    const warn = data.warning ? `<div style="color:#fbbf24;margin-top:4px;font-size:11px">⚠ ${escH(data.warning)}</div>` : '';
+    el.style.background = 'rgba(34,197,94,0.1)';
+    el.style.border = '1px solid rgba(34,197,94,0.4)';
+    el.style.color = '#86efac';
+    el.innerHTML = `✅ ${escH(data.message)}${warn}`;
+  } else {
+    const detail = data.detail ? `<div style="color:#6b7280;font-size:10px;margin-top:4px;font-family:monospace">${escH(data.detail)}</div>` : '';
+    el.style.background = 'rgba(239,68,68,0.1)';
+    el.style.border = '1px solid rgba(239,68,68,0.35)';
+    el.style.color = '#fca5a5';
+    el.innerHTML = `❌ <b>${escH(data.message)}</b><div style="color:#f87171;margin-top:4px">${escH(data.suggestion||'')}</div>${detail}`;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Config modal
+// ──────────────────────────────────────────────────────────────────────────────
+function openConfig(){
+  hideCfgValidBox();
+  loadPresets();
+  loadApiKeys();
+  document.getElementById('configOverlay').classList.add('open');
+}
+function closeConfig(){ document.getElementById('configOverlay').classList.remove('open'); }
+
+function onEmbChange(){
+  const v = document.getElementById('cfgEmbProvider').value;
+  document.getElementById('embRemote').style.display =
+    v === 'openai_compatible_embeddings' ? '' : 'none';
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// API Key manager
+// ──────────────────────────────────────────────────────────────────────────────
+async function loadApiKeys(){
+  const el = document.getElementById('apiKeyList');
+  if(!el) return;
+  try{
+    const res = await fetch('/api_keys');
+    const data = await res.json();
+    const keys = data.keys || {};
+    if(!Object.keys(keys).length){
+      el.innerHTML = '<div style="color:var(--muted);font-size:11px">暂无保存的 Key，在下方添加。</div>';
+      return;
+    }
+    // Network status icons
+    const NET_ICONS = {intranet:'🏢', siliconflow:'🌐', deepseek:'🌐', openai:'🌐'};
+    el.innerHTML = Object.entries(keys).map(([id, info])=>{
+      const icon = NET_ICONS[id] || '🔑';
+      const isInternal = id === 'intranet';
+      return `<div style="display:flex;align-items:center;gap:8px;background:var(--panel2);
+          border:1px solid var(--border);border-radius:10px;padding:8px 12px">
+        <span style="font-size:16px">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:var(--text)">${escH(info.note||id)}</div>
+          <div style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            ${escH(info.key_preview)} · ${escH(info.base_url||'')}
+          </div>
+        </div>
+        <button onclick="switchApiKey('${escH(id)}')" class="btn-secondary"
+          style="padding:5px 12px;font-size:11px;white-space:nowrap;flex-shrink:0">
+          切换使用
+        </button>
+      </div>`;
+    }).join('');
+  }catch(e){
+    el.innerHTML = '<div style="color:var(--muted);font-size:11px">加载失败</div>';
+  }
+}
+
+async function switchApiKey(keyId){
+  const res = await fetch('/api_keys/switch/'+keyId, {method:'POST'});
+  const data = await res.json();
+  if(data.ok){
+    setStatus('✅ ' + data.message);
+    // Reload config fields to show new values
+    loadConfig();
+    const vb = document.getElementById('cfgValidBox');
+    if(vb){
+      vb.style.display='';
+      vb.style.background='rgba(34,197,94,0.1)';
+      vb.style.border='1px solid rgba(34,197,94,0.4)';
+      vb.style.color='#86efac';
+      vb.innerHTML = '✅ ' + escH(data.message);
+    }
+  } else {
+    setStatus('❌ ' + (data.message||'切换失败'));
+  }
+}
+
+async function saveNewApiKey(){
+  const id   = (document.getElementById('newKeyId').value||'').trim();
+  const key  = (document.getElementById('newKeyVal').value||'').trim();
+  const url  = (document.getElementById('newKeyUrl').value||'').trim();
+  const note = (document.getElementById('newKeyNote').value||'').trim();
+  if(!id || !key){ setStatus('请填写标识名和 API Key'); return; }
+  const res = await fetch('/api_keys/save', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id, key, base_url:url, note})});
+  const data = await res.json();
+  if(data.ok){
+    setStatus('✅ ' + data.message);
+    document.getElementById('newKeyId').value='';
+    document.getElementById('newKeyVal').value='';
+    document.getElementById('newKeyUrl').value='';
+    document.getElementById('newKeyNote').value='';
+    loadApiKeys();
+  } else {
+    setStatus('❌ ' + data.message);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Preset selector
+// ──────────────────────────────────────────────────────────────────────────────
+let _allPresets = [];
+
+function _buildPresetOptions(){
+  const groups = {};
+  for(const p of _allPresets){
+    const g = p.group || '其他';
+    if(!groups[g]) groups[g] = [];
+    groups[g].push(p);
+  }
+  let html = '<option value="">— 选择预设 —</option>';
+  for(const [grp, presets] of Object.entries(groups)){
+    html += `<optgroup label="${escA(grp)}">`;
+    for(const p of presets){
+      html += `<option value="${escA(p.id)}">${(p.recommended?'⭐ ':'')}${escH(p.name)}</option>`;
+    }
+    html += '</optgroup>';
+  }
+  return html;
+}
+
+async function loadPresets(){
+  try{
+    const res = await fetch('/config/presets');
+    const data = await res.json();
+    _allPresets = data.presets || [];
+    const optHtml = _buildPresetOptions();
+    // Global preset dropdown
+    const sel = document.getElementById('presetSelect');
+    if(sel){
+      sel.innerHTML = optHtml;
+      sel.addEventListener('change', ()=>{
+        const p = _allPresets.find(x=>x.id===sel.value);
+        document.getElementById('presetNote').textContent = p ? (p.note||'') : '';
+      });
+    }
+    // Phase-specific preset dropdowns
+    ['p1PresetSel','p2PresetSel'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = optHtml;
+    });
+  }catch(e){ console.warn('loadPresets error', e); }
+}
+
+function applySelectedPreset(){
+  const id = document.getElementById('presetSelect').value;
+  if(!id) return;
+  const p = _allPresets.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('h1BaseUrl').value  = p.base_url || '';
+  document.getElementById('h1Model').value    = p.model || '';
+  document.getElementById('h1Headers').value  = p.extra_headers || '';
+  hideCfgValidBox();
+  document.getElementById('presetNote').textContent = '✅ 已填入 Phase 1：' + p.name;
+}
+
+function applyPhasePreset(phase){
+  const selId = 'p' + phase + 'PresetSel';
+  const id = document.getElementById(selId).value;
+  if(!id) return;
+  const p = _allPresets.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('h'+phase+'BaseUrl').value  = p.base_url || '';
+  document.getElementById('h'+phase+'Model').value    = p.model || '';
+  document.getElementById('h'+phase+'Headers').value  = p.extra_headers || '';
+  // Don't clear API key — user fills that separately
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Two-phase config helpers
+// ──────────────────────────────────────────────────────────────────────────────
+function _hybridPayload(){
+  // If per-phase API key is empty, fall back to the global key
+  const globalKey = document.getElementById('cfgApiKey').value.trim();
+  return {
+    phase1_provider:      'openai_compatible',
+    phase1_base_url:      document.getElementById('h1BaseUrl').value.trim(),
+    phase1_api_key:       document.getElementById('h1ApiKey').value.trim() || globalKey,
+    phase1_model:         document.getElementById('h1Model').value.trim(),
+    phase1_extra_headers: document.getElementById('h1Headers').value.trim(),
+    phase2_provider:      'openai_compatible',
+    phase2_base_url:      document.getElementById('h2BaseUrl').value.trim(),
+    phase2_api_key:       document.getElementById('h2ApiKey').value.trim() || globalKey,
+    phase2_model:         document.getElementById('h2Model').value.trim(),
+    phase2_extra_headers: document.getElementById('h2Headers').value.trim(),
+  };
+}
+
+function showHybridValidResult(data){
+  const el = document.getElementById('hybridValidBox');
+  if(!el) return;
+  el.style.display = '';
+  const r = data.results || {};
+  const p1 = r.phase1 || {}; const p2 = r.phase2 || {};
+  function rowHtml(label, d){
+    if(d.ok) return `<div style="color:#86efac">✅ ${escH(label)}：${escH(d.message||'连接成功')}</div>`;
+    return `<div style="color:#fca5a5">❌ ${escH(label)}：${escH(d.message||'失败')}
+      <div style="color:#f87171;font-size:11px">${escH(d.suggestion||'')}</div></div>`;
+  }
+  el.style.background = data.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)';
+  el.style.border = data.ok ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(239,68,68,0.35)';
+  el.innerHTML = rowHtml('Phase 1', p1) + rowHtml('Phase 2', p2);
+}
+
+async function testHybridConnection(){
+  const btn = document.getElementById('hybridTestBtn');
+  btn.disabled = true; btn.textContent = '⏳ 测试中…';
+  const vb = document.getElementById('hybridValidBox');
+  if(vb) vb.style.display = 'none';
+  try{
+    const res = await fetch('/config/hybrid/validate',{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(_hybridPayload())});
+    showHybridValidResult(await res.json());
+  } catch(e){
+    if(vb){ vb.style.display=''; vb.innerHTML='❌ 请求失败：'+escH(e.message); }
+  } finally{
+    btn.disabled=false; btn.textContent='🔌 测试两阶段连接';
+  }
+}
+
+async function loadConfig(){
+  try{
+    const res = await fetch('/config');
+    const cfg = await res.json();
+    // Global API key (shown at top, used as fallback for both phases)
+    document.getElementById('cfgApiKey').value = cfg.llm?.api_key || '';
+    // Embedding
+    document.getElementById('cfgEmbProvider').value = cfg.embedding?.provider||'simple';
+    document.getElementById('cfgEmbUrl').value = cfg.embedding?.base_url||'';
+    document.getElementById('cfgEmbKey').value = cfg.embedding?.api_key||'';
+    document.getElementById('cfgEmbModel').value = cfg.embedding?.model||'';
+    onEmbChange();
+    // Two-phase config
+    const h = cfg.hybrid_llm || {};
+    const INTRANET = 'https://api.llm-incubator.automotive.cloud/prod/v0/llm';
+    document.getElementById('h1BaseUrl').value = h.phase1_base_url || INTRANET;
+    document.getElementById('h1ApiKey').value  = h.phase1_api_key  || '';
+    document.getElementById('h1Model').value   = h.phase1_model    || 'DeepSeek-V3.2';
+    document.getElementById('h1Headers').value = h.phase1_extra_headers || '{"X-Application-Name":"ai-editor-review"}';
+    document.getElementById('h2BaseUrl').value = h.phase2_base_url || INTRANET;
+    document.getElementById('h2ApiKey').value  = h.phase2_api_key  || '';
+    document.getElementById('h2Model').value   = h.phase2_model    || 'DeepSeek-V4-Pro';
+    document.getElementById('h2Headers').value = h.phase2_extra_headers || '{"X-Application-Name":"ai-editor-review"}';
+    loadKBCategories();
+  }catch(e){ console.warn('loadConfig error', e); }
+}
+
+async function saveConfig(){
+  const globalKey = document.getElementById('cfgApiKey').value.trim();
+  // Save global key into main llm config (used as indicator / fallback display)
+  const body = {
+    provider: 'openai_compatible',
+    base_url: document.getElementById('h1BaseUrl').value.trim(),
+    api_key: globalKey,
+    model: document.getElementById('h1Model').value.trim(),
+    extra_headers: document.getElementById('h1Headers').value.trim(),
+  };
+  await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  // Save two-phase config
+  await fetch('/config/hybrid',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(_hybridPayload())});
+  const embBody = {
+    provider: document.getElementById('cfgEmbProvider').value,
+    base_url: document.getElementById('cfgEmbUrl').value,
+    api_key: document.getElementById('cfgEmbKey').value,
+    model: document.getElementById('cfgEmbModel').value,
+  };
+  await fetch('/embedding/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(embBody)});
+  const backendBody = {backend: document.getElementById('cfgVecBackend').value, category: null};
+  await fetch('/kb/backend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(backendBody)});
+  setStatus('配置已保存');
+  closeConfig();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// KB modal
+// ──────────────────────────────────────────────────────────────────────────────
+function openKB(){ loadKBCategories(); document.getElementById('kbOverlay').classList.add('open'); }
+function closeKB(){ document.getElementById('kbOverlay').classList.remove('open'); }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Rules modal
+// ──────────────────────────────────────────────────────────────────────────────
+let _allRules = [];
+let _pendingCustomRules = [];
+
+function openRules(){
+  loadRules();
+  loadRulesFile();
+  document.getElementById('rulesOverlay').classList.add('open');
+}
+function closeRules(){ document.getElementById('rulesOverlay').classList.remove('open'); }
+
+// Load rules file into textarea
+async function loadRulesFile(){
+  try{
+    const res = await fetch('/config/rules/file');
+    const data = await res.json();
+    const ta = document.getElementById('rulesFileContent');
+    if(ta) ta.value = data.content || '';
+    const info = document.getElementById('rulesFileSyncInfo');
+    if(info) info.textContent = data.exists ? '文件已加载' : '文件尚未创建，编辑后点「保存文件」';
+  }catch(e){}
+}
+
+// Save textarea content to file AND sync to custom_text
+async function saveRulesFile(){
+  const content = document.getElementById('rulesFileContent').value || '';
+  const res = await fetch('/config/rules/file',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({content})});
+  const data = await res.json();
+  const info = document.getElementById('rulesFileSyncInfo');
+  if(data.ok){
+    if(info) info.textContent = data.message;
+    setStatus('✅ ' + data.message);
+    // Also reload the custom text area to show what was synced
+    const mgr_res = await fetch('/config/rules');
+    const mgr_data = await mgr_res.json();
+    const txt = document.getElementById('rulesCustomText');
+    if(txt) txt.value = mgr_data.custom_text || '';
+  }
+}
+
+// Read file and sync its rules into the review engine (without saving to file)
+async function syncRulesFromFile(){
+  await saveRulesFile();
+  setStatus('✅ 规则已从文件同步');
+}
+
+const DIM_NAMES_SHORT = {
+  spelling:'格式规范', grammar:'语法文字', style:'语气风格',
+  terminology:'专业术语', fact:'事实核查', logic:'逻辑结构', qa_check:'题目校验',
+};
+
+async function loadRules(){
+  try{
+    const res = await fetch('/config/rules');
+    const data = await res.json();
+    _allRules = data.rules || [];
+    _pendingCustomRules = _allRules.filter(r=>!r.id?.startsWith('no_') && r.id !== 'allow_informal_tone');
+
+    const el = document.getElementById('rulesList');
+    if(!el) return;
+    // Group built-in rules by group field
+    const builtin = _allRules.filter(r=>r.type === 'disable');
+    const custom  = _allRules.filter(r=>r.type !== 'disable');
+    const groups = {};
+    for(const r of builtin){
+      const g = r.group || '其他';
+      groups[g] = groups[g] || [];
+      groups[g].push(r);
+    }
+    const GROUP_COLORS = {
+      'PDF噪音':  {color:'#06b6d4', bg:'rgba(6,182,212,.1)',  icon:'📄'},
+      '格式主观偏好': {color:'#a855f7', bg:'rgba(168,85,247,.1)', icon:'🎨'},
+      '风格偏好': {color:'#a855f7', bg:'rgba(168,85,247,.1)', icon:'🎨'},
+    };
+    let html = '';
+    // Render each group
+    for(const [grp, rules] of Object.entries(groups)){
+      const gc = GROUP_COLORS[grp] || {color:'#3b82f6', bg:'rgba(59,130,246,.1)', icon:'⚙'};
+      const enabledCount = rules.filter(r=>r.enabled).length;
+      html += `<div style="font-size:11px;font-weight:700;color:${gc.color};
+        background:${gc.bg};border-radius:8px;padding:5px 10px;margin-bottom:6px;
+        display:flex;align-items:center;justify-content:space-between">
+        <span>${gc.icon} ${escH(grp)}</span>
+        <span style="font-size:10px;font-weight:400;color:${gc.color}80">${enabledCount}/${rules.length} 启用</span>
+      </div>`;
+      html += rules.map(r=>{
+        const dims = (r.dimension||[]).map(d=>DIM_NAMES_SHORT[d]||d).join(' · ');
+        const badgeColor = r.enabled ? '#22c55e' : '#475569';
+        return `<label style="display:flex;align-items:flex-start;gap:10px;
+          background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+          padding:9px 12px;cursor:pointer;transition:.15s;margin-bottom:4px"
+          onmouseover="this.style.borderColor='rgba(59,130,246,.3)'"
+          onmouseout="this.style.borderColor='var(--border)'">
+          <input type="checkbox" id="rule_${escH(r.id)}" ${r.enabled?'checked':''}
+            style="width:auto;margin:2px 0 0 0;flex-shrink:0;accent-color:#3b82f6"/>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--text)">${escH(r.name)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4">${escH(r.description)}</div>
+            <div style="font-size:10px;color:#475569;margin-top:3px">适用：${escH(dims)}</div>
+          </div>
+        </label>`;
+      }).join('');
+      html += '<div style="height:6px"></div>';
+    }
+    if(custom.length){
+      html += `<div style="font-size:11px;font-weight:700;color:#f97316;
+        background:rgba(249,115,22,.1);border-radius:8px;padding:5px 10px;margin-bottom:6px">
+        ✏️ 我的自定义规则</div>`;
+      html += custom.map(r=>`
+        <div style="display:flex;align-items:center;gap:8px;background:var(--panel2);
+          border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:4px">
+          <input type="checkbox" id="rule_${escH(r.id)}" ${r.enabled!==false?'checked':''}
+            style="width:auto;margin:0;accent-color:#3b82f6;flex-shrink:0"/>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--text)">${escH(r.name)}</div>
+            <div style="font-size:10px;color:var(--muted)">${escH(r.prompt_instruction||'')}</div>
+          </div>
+          <button onclick="removeCustomRule('${escH(r.id)}')"
+            style="background:none;border:none;cursor:pointer;color:#475569;font-size:14px">✕</button>
+        </div>`).join('');
+    }
+    el.innerHTML = html || '<div style="color:var(--muted);font-size:12px">暂无规则</div>';
+
+    // Set custom text
+    const txt = document.getElementById('rulesCustomText');
+    if(txt) txt.value = data.custom_text || '';
+
+    // Update header button badge
+    const enabled = _allRules.filter(r=>r.enabled).length;
+    const btn = document.getElementById('rulesBtn');
+    if(btn) btn.textContent = enabled ? `📏 规则 (${enabled})` : '📏 自定义规则';
+  }catch(e){ console.warn('loadRules error', e); }
+}
+
+function addCustomRule(){
+  const name  = (document.getElementById('newRuleName').value||'').trim();
+  const instr = (document.getElementById('newRuleInstr').value||'').trim();
+  const dim   = document.getElementById('newRuleDim').value;
+  if(!name || !instr){ setStatus('请填写规则名称和指令'); return; }
+  const id = 'custom_' + Date.now();
+  const rule = {id, name, description: instr, dimension:[dim], type:'custom',
+                prompt_instruction:`【用户规则】${instr}`, enabled:true};
+  _allRules.push(rule);
+  document.getElementById('newRuleName').value = '';
+  document.getElementById('newRuleInstr').value = '';
+  loadRules(); // Re-render
+}
+
+function removeCustomRule(id){
+  _allRules = _allRules.filter(r=>r.id !== id);
+  loadRules();
+}
+
+async function saveRules(){
+  const rule_states = {};
+  for(const r of _allRules){
+    const cb = document.getElementById('rule_'+r.id);
+    if(cb) rule_states[r.id] = cb.checked;
+  }
+  const custom_text = (document.getElementById('rulesCustomText').value||'').trim();
+  const custom_rules = _allRules.filter(r=>r.type !== 'disable');
+  const res = await fetch('/config/rules',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({rule_states, custom_text, custom_rules})});
+  const data = await res.json();
+  if(data.ok){
+    setStatus('✅ 规则已保存');
+    // Show feedback
+    const vb = document.getElementById('rulesValidBox');
+    if(vb){
+      vb.style.display=''; vb.style.background='rgba(34,197,94,.1)';
+      vb.style.border='1px solid rgba(34,197,94,.4)'; vb.style.color='#86efac';
+      vb.textContent='✅ ' + data.message;
+      setTimeout(()=>{ vb.style.display='none'; closeRules(); }, 1200);
+    }
+    // Update header button badge
+    const enabled = (data.rules||[]).filter(r=>r.enabled).length;
+    const btn = document.getElementById('rulesBtn');
+    if(btn) btn.textContent = enabled ? `📏 规则 (${enabled})` : '📏 自定义规则';
+  }
+}
+
+
+function getCustomCats(){ try{ return JSON.parse(localStorage.getItem('kbCustomCats')||'[]'); }catch{return[];} }
+function saveCustomCats(c){ localStorage.setItem('kbCustomCats',JSON.stringify(c)); }
+
+async function loadKBCategories(){
+  const res = await fetch('/kb/categories');
+  const data = await res.json();
+  const server = data.categories||[];
+  const all = [...new Set([...DEFAULT_CATS,...getCustomCats(),...server])];
+  // KB list
+  const list = document.getElementById('kbCatList');
+  if(list){
+    list.innerHTML = all.map(c=>`<div class="kb-cat-row">
+      <div><b>${escH(CAT_LABELS[c]||c)}</b><small>${escH(c)}</small></div>
+      <button class="btn-secondary" style="padding:6px 12px;font-size:12px"
+        onclick="rebuildKB('${escH(c)}')">重建索引</button>
+    </div>`).join('');
+  }
+  // Category dropdowns
+  const opts = all.map(c=>`<option value="${escH(c)}">${escH(CAT_LABELS[c]||c)}</option>`).join('');
+  const kbSel = document.getElementById('kbCatSelect');
+  if(kbSel) kbSel.innerHTML = '<option value="">全部知识库</option>' + opts;
+  const impSel = document.getElementById('kbImportCat');
+  if(impSel) impSel.innerHTML = opts;
+}
+
+function addKBCat(){
+  const name = (document.getElementById('newCatInput').value||'').trim().toLowerCase().replace(/\s+/g,'_');
+  if(!name) return;
+  const cats = getCustomCats();
+  if(!cats.includes(name) && !DEFAULT_CATS.includes(name)){ cats.push(name); saveCustomCats(cats); }
+  document.getElementById('newCatInput').value = '';
+  loadKBCategories();
+}
+
+async function rebuildKB(cat){
+  setStatus('重建知识库：'+cat+'…');
+  const res = await fetch('/kb/rebuild',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({folder:'data/kb', category:cat})});
+  const d = await res.json();
+  setStatus(d.message||'知识库已重建');
+}
+
+async function importKBUrl(){
+  const url = document.getElementById('kbImportUrl').value.trim();
+  const cat = document.getElementById('kbImportCat').value;
+  if(!url) return;
+  setStatus('正在导入网页…');
+  const res = await fetch('/kb/import_url',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({url, category:cat})});
+  const d = await res.json();
+  setStatus(d.message||'导入完成');
+  loadKBCategories();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Init
+// ──────────────────────────────────────────────────────────────────────────────
+buildDimSelector();
+loadConfig();
+loadOutputFiles();
 </script>
 </body>
 </html>

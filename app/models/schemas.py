@@ -69,6 +69,11 @@ class ReviewIssue(BaseModel):
     suggestion: str
     reason: str
     evidence: Optional[str] = None
+    # Extended fields for multi-dimension engine
+    dimension: Optional[str] = None        # which review dimension produced this issue
+    confidence: float = 0.8               # LLM confidence score 0–1
+    needs_review: bool = False            # flag for human follow-up
+    chunk_index: Optional[int] = None     # which text chunk this came from
 
 
 class ReviewResult(BaseModel):
@@ -77,3 +82,6 @@ class ReviewResult(BaseModel):
     revised_text: str
     issues: List[ReviewIssue] = Field(default_factory=list)
     references: List[Dict[str, Any]] = Field(default_factory=list)
+    # Extended fields for multi-dimension engine
+    dimension_stats: Dict[str, int] = Field(default_factory=dict)
+    source_text: Optional[str] = None     # extracted plain text for frontend display
