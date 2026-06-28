@@ -12,13 +12,13 @@
 
 ## 一、开发方式启动
 ```bash
-cd /d E:\Document\Learn\Editor
+# 先进入项目根目录（本仓库）
 python -m pip install -r requirements.txt
-python -m uvicorn app.api.main:app --reload --host 127.0.0.1 --port 8010
+python -m uvicorn app.api.main:app --reload --host 0.0.0.0 --port 8010
 ```
 浏览器打开：
 ```text
-http://127.0.0.1:8010/
+http://localhost:8010/
 ```
 
 ## 二、桌面方式启动
@@ -44,7 +44,7 @@ python -m PyInstaller --noconfirm --clean --onefile --name AI审稿工具 run_de
 ```
 打包完成后，EXE 位于：
 ```text
-E:\Document\Learn\Editor\dist\AI审稿工具.exe
+dist\AI审稿工具.exe
 ```
 
 ## 四、说明

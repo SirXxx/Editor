@@ -13,12 +13,14 @@ from app.kb.vector_store import SimpleVectorStore
 from app.kb.web_loader import WebKnowledgeLoader
 from app.llm.providers import build_provider
 from app.review.reviewer import Reviewer
+from app.paths import KB_DIR, WORKSPACE_DIR, OUTPUT_DIR, ensure_runtime_dirs
 
 
 def cli():
+    ensure_runtime_dirs()
     parser = argparse.ArgumentParser(description='AI 审稿系统 CLI')
     parser.add_argument('pdf', nargs='?', help='待审校 PDF 路径')
-    parser.add_argument('--rebuild-kb', action='store_true', help='重建 data/kb 下的知识库索引')
+    parser.add_argument('--rebuild-kb', action='store_true', help='重建知识库目录下的索引（可由 APP_KB_DIR 配置）')
     parser.add_argument('--import-url', help='导入网页到知识库')
     parser.add_argument('--provider', default='mock', choices=['mock', 'openai_compatible'])
     parser.add_argument('--scan-mode', action='store_true', help='扫描件模式')
@@ -29,7 +31,7 @@ def cli():
     web_loader = WebKnowledgeLoader()
 
     if args.rebuild_kb:
-        chunks = kb_builder.load_text_files('data/kb')
+        chunks = kb_builder.load_text_files(str(KB_DIR))
         store.add_chunks(chunks)
         print(f'知识库已重建，共 {len(chunks)} 个 chunks')
     if args.import_url:
@@ -57,7 +59,7 @@ def cli():
     extracted = extractor.extract(str(pdf_path))
     extracted.tables.extend(adv_tables.extract(str(pdf_path)))
     if args.scan_mode:
-        pages = layout.extract_pdf_pages(str(pdf_path), str(Path('data/workspace') / f'{pdf_path.stem}_pages'))
+        pages = layout.extract_pdf_pages(str(pdf_path), str(WORKSPACE_DIR / f'{pdf_path.stem}_pages'))
         extracted.warnings.append(f'扫描件模式完成，共识别页数: {len(pages)}')
     for img in extracted.images:
         img.ocr_text = ocr.recognize_image(img.path)
@@ -67,7 +69,7 @@ def cli():
     reviewer = Reviewer(provider, store)
     result = reviewer.review(markdown, str(pdf_path))
 
-    out_dir = Path('data/output')
+    out_dir = OUTPUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / f'{pdf_path.stem}_markdown.md').write_text(markdown, encoding='utf-8')
     (out_dir / f'{pdf_path.stem}_review.json').write_text(result.model_dump_json(indent=2), encoding='utf-8')

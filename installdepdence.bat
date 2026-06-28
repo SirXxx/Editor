@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-cd /d E:\Document\Learn\Editor
+cd /d "%~dp0"
 
 echo 正在安装/更新依赖到虚拟环境...
 echo.

@@ -15,15 +15,25 @@ if sys.platform == "win32":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 
-def find_free_port(start=8010, end=8099):
+def env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+def find_free_port(start=8010, end=8099, bind_host="0.0.0.0"):
     for port in range(start, end + 1):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.bind(("0.0.0.0", port))
+                s.bind((bind_host, port))
                 return port
             except OSError:
                 continue
-    return 8010
+    return start
 
 
 def get_local_ip() -> str:
@@ -44,8 +54,15 @@ def open_browser_later(url: str, delay: float = 2.0):
 
 def main():
     os.chdir(Path(__file__).resolve().parent)
-    port = find_free_port()
-    local_url = f"http://127.0.0.1:{port}/"
+    bind_host = os.getenv("APP_BIND_HOST", "0.0.0.0")
+    open_host = os.getenv("APP_OPEN_HOST", "localhost")
+    port_start = env_int("APP_PORT_START", 8010)
+    port_end = env_int("APP_PORT_END", 8099)
+    if port_end < port_start:
+        port_end = port_start
+
+    port = find_free_port(start=port_start, end=port_end, bind_host=bind_host)
+    local_url = f"http://{open_host}:{port}/"
     lan_ip = get_local_ip()
     lan_url = f"http://{lan_ip}:{port}/"
 
@@ -54,10 +71,11 @@ def main():
     print("=" * 55)
     print(f"  Local:   {local_url}")
     print(f"  LAN/Hotspot: {lan_url}  <-- use on other devices")
+    print(f"  Bind Host: {bind_host}")
     print("=" * 55)
 
     open_browser_later(local_url)
-    uvicorn.run("app.api.main:app", host="0.0.0.0", port=port, reload=False)
+    uvicorn.run("app.api.main:app", host=bind_host, port=port, reload=False)
 
 
 if __name__ == "__main__":

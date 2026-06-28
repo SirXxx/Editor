@@ -26,7 +26,9 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-LEXICON_PATH = Path("data/workspace/sensitive_lexicon.json")
+from app.paths import SENSITIVE_LEXICON_PATH
+
+LEXICON_PATH = SENSITIVE_LEXICON_PATH
 
 
 def _atomic_write_text(path: Path, content: str) -> None:

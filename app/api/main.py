@@ -31,21 +31,27 @@ from app.review.sensitive_scanner import (
 )
 from app.models.schemas import ReviewIssue
 from app.config import BUILTIN_PRESETS
+from app.paths import (
+    PROJECT_ROOT,
+    DATA_DIR,
+    INPUT_DIR,
+    OUTPUT_DIR,
+    WORKSPACE_DIR,
+    KB_DIR,
+    API_KEYS_PATH,
+    MY_RULES_MD_PATH,
+    ensure_runtime_dirs,
+)
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-UI_DIR = BASE_DIR / "app" / "ui"
-DATA_DIR = BASE_DIR / "data"
-INPUT_DIR = DATA_DIR / "input"
-OUTPUT_DIR = DATA_DIR / "output"
-WORKSPACE_DIR = DATA_DIR / "workspace"
-for d in [INPUT_DIR, OUTPUT_DIR, WORKSPACE_DIR]:
-    d.mkdir(parents=True, exist_ok=True)
+BASE_DIR = PROJECT_ROOT
+UI_DIR = PROJECT_ROOT / "app" / "ui"
+ensure_runtime_dirs()
 
 app = FastAPI(title="AI Editor Review System")
 app.mount("/static", StaticFiles(directory=str(UI_DIR)), name="static")
 
 config = AppConfig.load()
-kb_manager = KnowledgeBaseManager(base_dir=str(DATA_DIR / "kb"), config=config)
+kb_manager = KnowledgeBaseManager(base_dir=str(KB_DIR), config=config)
 
 TASKS: Dict[str, Dict[str, Any]] = {}
 TASK_LOCK = Lock()
@@ -84,7 +90,7 @@ class EmbeddingConfigPayload(BaseModel):
 
 
 class KBRebuildPayload(BaseModel):
-    folder: str = "data/kb"
+    folder: str = ""
     category: str = "general"
 
 
@@ -111,7 +117,7 @@ def index() -> HTMLResponse:
 @app.get("/api_keys")
 def get_api_keys() -> Dict[str, Any]:
     """返回已保存的 API Key 列表（Key 值脱敏）。"""
-    keys_path = DATA_DIR / "workspace" / "api_keys.json"
+    keys_path = API_KEYS_PATH
     if not keys_path.exists():
         return {"ok": True, "keys": {}}
     try:
@@ -132,7 +138,7 @@ def get_api_keys() -> Dict[str, Any]:
 @app.post("/api_keys/switch/{key_id}")
 def switch_api_key(key_id: str) -> Dict[str, Any]:
     """切换活跃 API Key（自动更新 Phase1/Phase2 的 key）。"""
-    keys_path = DATA_DIR / "workspace" / "api_keys.json"
+    keys_path = API_KEYS_PATH
     if not keys_path.exists():
         return {"ok": False, "message": "未找到已保存的 Key"}
     raw = json.loads(keys_path.read_text(encoding="utf-8"))
@@ -165,7 +171,7 @@ def save_api_key(payload: Dict[str, Any] = None) -> Dict[str, Any]:
     note    = payload.get("note", "").strip()
     if not key_id or not key_val:
         return {"ok": False, "message": "id 和 key 不能为空"}
-    keys_path = DATA_DIR / "workspace" / "api_keys.json"
+    keys_path = API_KEYS_PATH
     try:
         existing = json.loads(keys_path.read_text(encoding="utf-8")) if keys_path.exists() else {}
     except Exception:
@@ -404,7 +410,7 @@ def save_rules(payload: RuleSavePayload) -> Dict[str, Any]:
 @app.get("/config/rules/file")
 def get_rules_file() -> Dict[str, Any]:
     """读取 data/my_rules.md 文件内容。"""
-    rules_file = DATA_DIR / "my_rules.md"
+    rules_file = MY_RULES_MD_PATH
     if not rules_file.exists():
         return {"ok": True, "content": "", "exists": False}
     content = rules_file.read_text(encoding="utf-8")
@@ -415,7 +421,7 @@ def get_rules_file() -> Dict[str, Any]:
 def save_rules_file(payload: Dict[str, Any]) -> Dict[str, Any]:
     """保存 data/my_rules.md 文件内容，并同步到自定义规则文本。"""
     content = payload.get("content", "")
-    rules_file = DATA_DIR / "my_rules.md"
+    rules_file = MY_RULES_MD_PATH
     rules_file.write_text(content, encoding="utf-8")
     # Extract plain-text rules (non-comment lines) and sync to custom_text
     lines = []
@@ -483,7 +489,9 @@ def kb_categories() -> Dict[str, Any]:
 
 @app.post("/kb/rebuild")
 def kb_rebuild(payload: KBRebuildPayload) -> Dict[str, Any]:
-    folder = payload.folder
+    folder = (payload.folder or "").strip()
+    if not folder:
+        folder = str(KB_DIR)
     if not Path(folder).is_absolute():
         folder = str(BASE_DIR / folder)
     count = kb_manager.rebuild_from_folder(folder=folder, category=payload.category)

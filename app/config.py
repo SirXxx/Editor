@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-CONFIG_PATH = Path("data/workspace/app_config.json")
+from app.paths import CONFIG_PATH
 
 # ── Built-in preset definitions ───────────────────────────────────────────────
 BUILTIN_PRESETS: List[Dict[str, Any]] = [

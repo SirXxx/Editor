@@ -11,7 +11,9 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-RULES_PATH = Path("data/workspace/review_rules.json")
+from app.paths import REVIEW_RULES_PATH
+
+RULES_PATH = REVIEW_RULES_PATH
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
