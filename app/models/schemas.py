@@ -61,19 +61,20 @@ class KBChunk(BaseModel):
 
 
 class ReviewIssue(BaseModel):
-    issue_type: Literal['spelling', 'grammar', 'format', 'style', 'fact', 'terminology', 'logic', 'reference']
+    issue_type: Literal['spelling', 'grammar', 'format', 'style', 'fact', 'terminology', 'logic', 'reference', 'politics', 'sensitive', 'structure', 'copyright']
     severity: Literal['low', 'medium', 'high'] = 'medium'
     page: Optional[int] = None
+    line: Optional[int] = None            # line number within the page
     block_id: Optional[str] = None
     original: str
     suggestion: str
     reason: str
     evidence: Optional[str] = None
     # Extended fields for multi-dimension engine
-    dimension: Optional[str] = None        # which review dimension produced this issue
-    confidence: float = 0.8               # LLM confidence score 0–1
-    needs_review: bool = False            # flag for human follow-up
-    chunk_index: Optional[int] = None     # which text chunk this came from
+    dimension: Optional[str] = None
+    confidence: float = 0.8
+    needs_review: bool = False
+    chunk_index: Optional[int] = None
 
 
 class ReviewResult(BaseModel):
@@ -85,3 +86,5 @@ class ReviewResult(BaseModel):
     # Extended fields for multi-dimension engine
     dimension_stats: Dict[str, int] = Field(default_factory=dict)
     source_text: Optional[str] = None     # extracted plain text for frontend display
+    failed_tasks: int = 0                 # number of failed (chunk×dim) subtasks
+    incomplete: bool = False              # True if any subtask failed

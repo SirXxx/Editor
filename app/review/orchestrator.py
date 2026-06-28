@@ -26,7 +26,7 @@ from app.review.dimensions import (
     DIM_TO_ISSUE_TYPE,
     VALID_ISSUE_TYPES,
 )
-from app.review.structured_parser import parse_review_json
+from app.review.structured_parser import parse_review_json_ex
 from app.review.rules import get_rules_manager
 
 _PY39 = sys.version_info >= (3, 9)
@@ -62,20 +62,33 @@ class ReviewOrchestrator:
         kb_category: Optional[str] = None,
         event_callback: Optional[Callable] = None,
         cancel_check: Optional[Callable] = None,
+        chunk_page_map: Optional[Dict[int, int]] = None,
+        offset_to_page: Optional[Callable[[int], Optional[int]]] = None,
     ) -> ReviewResult:
         """主入口：两阶段并行审稿，通过 event_callback 实时推送进度事件。
 
         Parameters
         ----------
-        text:           待审稿的纯文本内容
-        dimensions:     要启用的维度列表（默认全部六个）
-        kb_category:    知识库类别（可选）
-        event_callback: 事件回调 fn(event_type: str, **kwargs)，可抛异常以取消
-        cancel_check:   轮询取消标志 fn() -> bool
+        text:            待审稿的纯文本内容
+        dimensions:      要启用的维度列表（默认全部六个）
+        kb_category:     知识库类别（可选）
+        event_callback:  事件回调 fn(event_type: str, **kwargs)，可抛异常以取消
+        cancel_check:    轮询取消标志 fn() -> bool
+        chunk_page_map:  chunk_index -> page_number 映射（旧式，等宽假设，已弃用）
+        offset_to_page:  char_offset -> page_number 函数（A1：基于真实字符偏移，精确）
         """
         dimensions = dimensions or list(REVIEW_DIMENSIONS.keys())
-        chunks = self._split_text(text)
+        chunks_with_off = self._split_text(text)
+        chunks = [c for c, _off in chunks_with_off]
         total_chunks = len(chunks)
+
+        # A1: 用真实字符偏移映射每个 chunk 的页码（优先于旧式等宽 chunk_page_map）
+        chunk_page_map = dict(chunk_page_map or {})
+        if offset_to_page is not None:
+            for idx, (_c, off) in enumerate(chunks_with_off):
+                pg = offset_to_page(off)
+                if pg:
+                    chunk_page_map[idx] = pg
 
         def emit(event_type: str, **kwargs) -> None:
             if event_callback:
@@ -88,6 +101,7 @@ class ReviewOrchestrator:
              message=f"文档解析完成，共 {total_chunks} 段，{len(text)} 字")
 
         all_issues: List[ReviewIssue] = []
+        fail_total = 0   # A2: 统计失败的 (chunk×dim) 子任务
 
         # ── Phase 1: 快速扫描 ─────────────────────────────────────────────────
         phase1_dims = [d for d in dimensions if d in PHASE1_DIMS]
@@ -98,13 +112,15 @@ class ReviewOrchestrator:
                  total_tasks=total_chunks * len(phase1_dims),
                  model=p1_model,
                  message=f"Phase 1  语法 · 格式 · 风格  扫描中…（{p1_model}）")
-            issues1 = self._run_phase_parallel(
+            issues1, fails1 = self._run_phase_parallel(
                 chunks, phase1_dims, kb_category, emit, cancelled,
-                llm=self.llm,
+                llm=self.llm, chunk_page_map=chunk_page_map,
             )
             all_issues.extend(issues1)
+            fail_total += fails1
             emit("phase_done", phase=1, issue_count=len(issues1),
                  elapsed_s=round(time.time() - t0, 1),
+                 failed=fails1,
                  model=p1_model)
 
         # ── Phase 2: 深度分析 ─────────────────────────────────────────────────
@@ -116,25 +132,29 @@ class ReviewOrchestrator:
                  total_tasks=total_chunks * len(phase2_dims),
                  model=p2_model,
                  message=f"Phase 2  术语 · 逻辑 · 事实  深度分析中…（{p2_model}）")
-            issues2 = self._run_phase_parallel(
+            issues2, fails2 = self._run_phase_parallel(
                 chunks, phase2_dims, kb_category, emit, cancelled,
-                llm=self.llm_phase2,
+                llm=self.llm_phase2, chunk_page_map=chunk_page_map,
             )
             all_issues.extend(issues2)
+            fail_total += fails2
             emit("phase_done", phase=2, issue_count=len(issues2),
                  elapsed_s=round(time.time() - t0, 1),
+                 failed=fails2,
                  model=p2_model)
 
         # ── 汇总 ──────────────────────────────────────────────────────────────
-        summary = self._build_summary(all_issues)
+        summary = self._build_summary(all_issues, fail_total)
         dim_stats = self._dimension_stats(all_issues)
         emit("completed",
              total_issues=len(all_issues),
              summary=summary,
+             failed_tasks=fail_total,
+             incomplete=bool(fail_total),
              dimension_stats=dim_stats,
              issues=[i.model_dump() for i in all_issues])
 
-        return ReviewResult(
+        result = ReviewResult(
             source_file="",
             summary=summary,
             revised_text="",
@@ -142,6 +162,13 @@ class ReviewOrchestrator:
             references=[],
             dimension_stats=dim_stats,
         )
+        # 附加“是否完整”元信息（A2）
+        try:
+            result.failed_tasks = fail_total
+            result.incomplete = bool(fail_total)
+        except Exception:
+            pass
+        return result
 
     # ──────────────────────────────────────────────────────────────────────────
     # Internal helpers
@@ -155,8 +182,13 @@ class ReviewOrchestrator:
         emit: Callable,
         cancelled: Callable,
         llm: Optional[LLMProvider] = None,
-    ) -> List[ReviewIssue]:
-        """并行运行 chunks × dimensions 的全部子任务。llm 参数指定本阶段使用的 provider。"""
+        chunk_page_map: Optional[Dict[int, int]] = None,
+    ) -> "tuple[List[ReviewIssue], int]":
+        """并行运行 chunks × dimensions 的全部子任务。
+
+        返回 ``(issues, failed_count)``。failed_count 统计因异常或解析失败而
+        丢失结果的子任务数（A2），用于在汇总中显式告知“结果不完整”。
+        """
         active_llm = llm or self.llm
         tasks = [
             (chunk_idx, chunk, dim)
@@ -165,12 +197,16 @@ class ReviewOrchestrator:
         ]
         all_issues: List[ReviewIssue] = []
         done_count = 0
+        failed_count = 0
         total_tasks = len(tasks)
 
         pool = ThreadPoolExecutor(max_workers=self.max_workers)
         try:
             futures = {
-                pool.submit(self._review_one, chunk, dim, kb_category, active_llm): (chunk_idx, dim)
+                pool.submit(
+                    self._review_one, chunk, dim, kb_category, active_llm,
+                    chunk_page_map.get(chunk_idx) if chunk_page_map else None
+                ): (chunk_idx, dim)
                 for chunk_idx, chunk, dim in tasks
             }
             for future in as_completed(futures):
@@ -182,7 +218,9 @@ class ReviewOrchestrator:
                     issues = future.result()
                 except Exception as exc:
                     issues = []
+                    failed_count += 1
                     emit("chunk_error", chunk=chunk_idx, dimension=dim,
+                         done=done_count, total=total_tasks,
                          error=str(exc))
 
                 all_issues.extend(issues)
@@ -201,7 +239,7 @@ class ReviewOrchestrator:
             else:
                 pool.shutdown(wait=False)
 
-        return all_issues
+        return all_issues, failed_count
 
     def _review_one(
         self,
@@ -209,6 +247,7 @@ class ReviewOrchestrator:
         dimension: str,
         kb_category: Optional[str],
         llm: Optional[LLMProvider] = None,
+        chunk_page: Optional[int] = None,
     ) -> List[ReviewIssue]:
         """审稿单个 chunk 的单个维度，返回 ReviewIssue 列表。"""
         active_llm = llm or self.llm
@@ -219,7 +258,9 @@ class ReviewOrchestrator:
         rules_suffix = get_rules_manager().get_prompt_suffix(dimension)
         system_prompt = dim_cfg["system_prompt"] + rules_suffix
 
-        user_msg = f"请审校以下内容：\n\n【文档片段】\n{chunk_text}"
+        # Include page hint in user message so LLM can reference it
+        page_hint = f"\n\n【当前文本所在页码：约第 {chunk_page} 页】" if chunk_page else ""
+        user_msg = f"请审校以下内容：\n\n【文档片段】\n{chunk_text}{page_hint}"
         if ref_text and ref_text != "[无命中参考资料]":
             user_msg += f"\n\n【参考资料】\n{ref_text}"
 
@@ -227,10 +268,21 @@ class ReviewOrchestrator:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_msg},
         ])
-        return self._parse_issues(response, dimension)
+        # A3: 解析失败/截断不再静默当作“无问题”，而是抛出以计入失败统计
+        if "<<TRUNCATED>>" in (response or ""):
+            raise RuntimeError("模型响应被截断（finish_reason=length），结果可能不完整")
+        issues, parse_ok = self._parse_issues(response, dimension)
+        if not parse_ok:
+            raise RuntimeError("模型响应无法解析为合法 JSON")
+        # Tag each issue with the chunk's page number
+        if chunk_page:
+            for issue in issues:
+                if not issue.page:
+                    issue.page = chunk_page
+        return issues
 
-    def _parse_issues(self, response: str, dimension: str) -> List[ReviewIssue]:
-        parsed = parse_review_json(response)
+    def _parse_issues(self, response: str, dimension: str) -> "tuple[List[ReviewIssue], bool]":
+        parsed, ok = parse_review_json_ex(response)
         issues: List[ReviewIssue] = []
         for item in parsed.get("issues", []):
             try:
@@ -256,24 +308,44 @@ class ReviewOrchestrator:
                 issues.append(issue)
             except Exception:
                 continue
-        return issues
+        return issues, ok
 
-    def _split_text(self, text: str) -> List[str]:
-        """按段落分割文本为固定大小的 chunk（不切断段落）。"""
-        paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
+    def _split_text(self, text: str) -> "list[tuple[str, int]]":
+        """按段落分割文本为固定大小的 chunk（不切断段落）。
+
+        返回 ``[(chunk_text, start_offset), ...]``，start_offset 为该 chunk 首段
+        在原始 text 中的字符偏移（A1：供精确的 offset→page 映射，取代等宽假设）。
+        """
+        # 记录每个非空段落在原文中的字符偏移
+        paragraphs: "list[tuple[str, int]]" = []
+        offset = 0
+        for line in text.split("\n"):
+            stripped = line.strip()
+            if stripped:
+                # 段落在原文中的偏移 = 当前行偏移 + 前导空白长度
+                lead = len(line) - len(line.lstrip())
+                paragraphs.append((stripped, offset + lead))
+            offset += len(line) + 1  # +1 还原被 split 掉的 '\n'
+
         if not paragraphs:
-            return [text] if text.strip() else [""]
-        chunks, cur, cur_len = [], [], 0
-        for para in paragraphs:
+            return [(text, 0)] if text.strip() else [("", 0)]
+
+        chunks: "list[tuple[str, int]]" = []
+        cur: List[str] = []
+        cur_off = paragraphs[0][1]
+        cur_len = 0
+        for para, p_off in paragraphs:
             if cur_len + len(para) > self.chunk_size and cur:
-                chunks.append("\n".join(cur))
-                cur, cur_len = [para], len(para)
+                chunks.append(("\n".join(cur), cur_off))
+                cur, cur_len, cur_off = [para], len(para), p_off
             else:
+                if not cur:
+                    cur_off = p_off
                 cur.append(para)
                 cur_len += len(para)
         if cur:
-            chunks.append("\n".join(cur))
-        return chunks or [text]
+            chunks.append(("\n".join(cur), cur_off))
+        return chunks or [(text, 0)]
 
     def _search_refs(self, query: str, kb_category: Optional[str]) -> str:
         if not self.kb:
@@ -295,9 +367,15 @@ class ReviewOrchestrator:
             stats[dim] = stats.get(dim, 0) + 1
         return stats
 
-    def _build_summary(self, issues: List[ReviewIssue]) -> str:
+    def _build_summary(self, issues: List[ReviewIssue], failed_tasks: int = 0) -> str:
+        incomplete_note = ""
+        if failed_tasks:
+            incomplete_note = (
+                f"\n⚠️ 注意：有 {failed_tasks} 个审稿子任务失败（网络/限流/解析失败），"
+                f"本次结果可能不完整，建议对失败部分重试。"
+            )
         if not issues:
-            return "审稿完成，未发现明显问题。"
+            return "审稿完成，未发现明显问题。" + incomplete_note
         stats = self._dimension_stats(issues)
         parts = []
         for dim, count in stats.items():
@@ -308,4 +386,5 @@ class ReviewOrchestrator:
         return (
             f"共发现 {len(issues)} 处问题"
             f"（严重 {high} 处 · 中等 {med} 处）：" + "、".join(parts)
+            + incomplete_note
         )

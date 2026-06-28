@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import shutil
 import uuid
 from datetime import datetime
@@ -22,6 +23,13 @@ from app.llm.providers import LLMProviderFactory, LLMConfigError
 from app.review.orchestrator import ReviewOrchestrator
 from app.review.reviewer import Reviewer
 from app.review.rules import get_rules_manager
+from app.review.sensitive_scanner import (
+    scan_pages,
+    get_lexicon_dict,
+    save_lexicon_dict,
+    ensure_lexicon_file,
+)
+from app.models.schemas import ReviewIssue
 from app.config import BUILTIN_PRESETS
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -426,6 +434,26 @@ def save_rules_file(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {"ok": True, "message": f"规则文件已保存，同步了 {len(lines)} 条规则", "synced_count": len(lines)}
 
 
+@app.get("/config/sensitive_lexicon")
+def get_sensitive_lexicon() -> Dict[str, Any]:
+    """读取当前生效的敏感词库（内置 + 用户自定义合并结果）。"""
+    ensure_lexicon_file()
+    return {"ok": True, "lexicon": get_lexicon_dict()}
+
+
+@app.post("/config/sensitive_lexicon")
+def save_sensitive_lexicon(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """保存编辑后的敏感词库。"""
+    data = payload.get("lexicon", payload)
+    try:
+        save_lexicon_dict(data)
+    except Exception as e:
+        return {"ok": False, "message": f"保存失败：{e}"}
+    cats = (data.get("categories") or {})
+    total = sum(len(c.get("terms", [])) for c in cats.values())
+    return {"ok": True, "message": f"敏感词库已保存，共 {len(cats)} 类 {total} 词"}
+
+
 
 @app.post("/kb/backend")
 def save_kb_backend(payload: KBBackendPayload) -> Dict[str, Any]:
@@ -468,11 +496,42 @@ def kb_import_url(payload: KBImportUrlPayload) -> Dict[str, Any]:
     return {"ok": True, "message": "网页知识已导入", "document": doc}
 
 
+def _sanitize_filename(name: str) -> str:
+    """清洗上传文件名，防止路径穿越与非法字符（O2）。"""
+    import os as _os
+    base = _os.path.basename(str(name or "")).replace("\\", "_").replace("/", "_")
+    # 去除驱动器/穿越片段与控制字符
+    base = re.sub(r'[\x00-\x1f<>:"|?*]', "_", base).strip().strip(".")
+    base = base.lstrip(".")  # 防止隐藏文件 / 仅点
+    if not base:
+        base = "document"
+    return base[:180]
+
+
+_PUNCT_RE = re.compile(r"[\s\u3000，。、；：！？“”‘’（）()\[\]【】<>《》·\-—~,.;:!?\"'`]+")
+
+
+def _normalize_for_match(s: str) -> str:
+    """归一化文本用于回填/幻觉匹配：去空白与中英标点，统一全角半角数字字母。"""
+    if not s:
+        return ""
+    out = []
+    for ch in s:
+        cp = ord(ch)
+        # 全角数字/字母 → 半角
+        if 0xFF10 <= cp <= 0xFF19 or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
+            out.append(chr(cp - 0xFEE0))
+        else:
+            out.append(ch)
+    return _PUNCT_RE.sub("", "".join(out))
+
+
 @app.post("/tasks/review_document")
 async def create_review_task(
     file: UploadFile = File(...),
     kb_category: str = Form(default=""),
     scan_mode: bool = Form(default=False),
+    include_front_pages: bool = Form(default=False),
     export_markdown: bool = Form(default=False),
     export_csv: bool = Form(default=False),
     dimensions: str = Form(default=""),      # comma-separated, empty = all
@@ -498,7 +557,9 @@ async def create_review_task(
     p_end   = max(0, page_end)   # 0 = no limit
 
     task_id = str(uuid.uuid4())
-    input_path = INPUT_DIR / f"{task_id}_{file.filename}"
+    # O2: 防路径穿越——只取文件名部分并清洗非法字符
+    safe_name = _sanitize_filename(file.filename)
+    input_path = INPUT_DIR / f"{task_id}_{safe_name}"
     with input_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
@@ -513,6 +574,7 @@ async def create_review_task(
         "file_type": suffix,
         "kb_category": kb_category or "",
         "scan_mode": scan_mode,
+        "include_front_pages": include_front_pages,
         "dimensions": selected_dims,
         "page_start": p_start,
         "page_end": p_end,
@@ -528,7 +590,7 @@ async def create_review_task(
     thread = Thread(
         target=_run_review_task_sync,
         args=(task_id, str(input_path), file.filename, suffix, kb_category,
-              scan_mode, export_markdown, export_csv, selected_dims, p_start, p_end),
+              scan_mode, include_front_pages, export_markdown, export_csv, selected_dims, p_start, p_end),
         daemon=True,
     )
     thread.start()
@@ -683,6 +745,7 @@ def _run_review_task_sync(
     file_type: str,
     kb_category: str,
     scan_mode: bool,
+    include_front_pages: bool,
     export_markdown: bool,
     export_csv: bool,
     dimensions: Optional[list] = None,
@@ -699,27 +762,104 @@ def _run_review_task_sync(
 
         if file_type == ".pdf":
             import fitz as _fitz
+            from app.extractors.text_cleaner import (
+                preprocess_pages, strip_non_content_front_pages, page_text_layout_aware,
+            )
             _doc = _fitz.open(input_path)
             total_pages = len(_doc)
-            # Resolve page range (1-based, inclusive)
-            p0 = max(0, page_start - 1)          # convert to 0-based
-            p1 = (page_end if page_end > 0 else total_pages)  # exclusive end
+            p0 = max(0, page_start - 1)
+            p1 = (page_end if page_end > 0 else total_pages)
             p1 = min(p1, total_pages)
             page_range_desc = (f"第{p0+1}-{p1}页" if p1 < total_pages or p0 > 0
                                else f"全文共{total_pages}页")
             _update_task(task_id, progress=10,
                          message=f"正在解析 PDF 文本（{page_range_desc}，共{total_pages}页）")
 
-            text_parts = []
+            # Extract raw page texts（版面感知：用 block 坐标重排，缓解双栏乱序 P3）
+            raw_pages: list = []
+            low_text_pages: list = []
             for pi in range(p0, p1):
-                page_text = _doc[pi].get_text()
+                page = _doc[pi]
+                ptxt = page_text_layout_aware(page)
+                raw_pages.append((pi + 1, ptxt))
+                if len(ptxt.strip()) < 10:
+                    low_text_pages.append(pi)
+
+            # P1: 扫描件/图片型 PDF — 显式 scan_mode 或检测到大量空文本页时走 OCR
+            need_ocr = scan_mode or (len(low_text_pages) >= max(1, (p1 - p0) * 0.6))
+            if need_ocr:
+                try:
+                    from app.extractors.layout_ocr import LayoutOCRProcessor
+                    ocr = LayoutOCRProcessor()
+                    if ocr.ocr.available():
+                        _update_task(task_id, progress=10,
+                                     message="检测到扫描件/图片型 PDF，正在 OCR 识别（较慢）…")
+                        _emit_task_event(task_id, {"type": "preprocess_notice",
+                                                   "message": "已启用 OCR 识别扫描件文本"})
+                        out_dir = str(WORKSPACE_DIR / f"{task_id}_ocr")
+                        ocr_pages = ocr.extract_pdf_pages(str(input_path), out_dir)
+                        # 仅替换所选页范围
+                        ocr_map = {item["page"]: item.get("text", "") for item in ocr_pages}
+                        raw_pages = [(pi + 1, ocr_map.get(pi + 1, dict(raw_pages).get(pi + 1, "")))
+                                     for pi in range(p0, p1)]
+                    elif scan_mode:
+                        _emit_task_event(task_id, {"type": "chunk_error", "dimension": "ocr",
+                            "error": "OCR 引擎不可用（未安装 paddleocr），扫描件可能无法识别"})
+                except Exception as ocr_err:
+                    _emit_task_event(task_id, {"type": "chunk_error", "dimension": "ocr",
+                                               "error": f"OCR 失败：{ocr_err}"})
+            _doc.close()
+
+            # Drop non-content leading pages (e.g. vendor review cover/overview pages)
+            skipped_pages = []
+            if include_front_pages:
+                _emit_task_event(task_id, {
+                    "type": "preprocess_notice",
+                    "skipped_pages": [],
+                    "message": "当前为全页审稿模式：已包含前置页（可能含审校封面/概览）",
+                })
+            if not include_front_pages:
+                filtered_pages, skipped_pages = strip_non_content_front_pages(raw_pages)
+                if skipped_pages:
+                    raw_pages = filtered_pages
+                    skipped_label = "、".join(str(p) for p in skipped_pages[:8])
+                    if len(skipped_pages) > 8:
+                        skipped_label += "…"
+                    _emit_task_event(task_id, {
+                        "type": "preprocess_notice",
+                        "skipped_pages": skipped_pages,
+                        "message": f"已自动跳过疑似非正文前置页：第{skipped_label}页",
+                    })
+
+            # Run full preprocessing pipeline: PUA→clean, headers removed, broken lines joined
+            _update_task(task_id, progress=11, message="正在清洗 PDF 文本噪音…")
+            clean_stats: Dict[str, Any] = {}
+            cleaned_pages = preprocess_pages(raw_pages, stats=clean_stats)
+
+            # P2: PUA 丢字告警——丢弃过多疑似字体编码异常，提示人工核对
+            if clean_stats.get("pua_dropped", 0) >= 30:
+                _emit_task_event(task_id, {
+                    "type": "preprocess_notice",
+                    "message": f"⚠️ 检测到 {clean_stats['pua_dropped']} 个无法识别的私用区字符"
+                               f"（已用 □ 占位），疑似字体编码异常，请人工核对原文。",
+                })
+
+            # Build page_line_index from CLEANED text (for accurate issue matching)
+            # 同时构建 page_offsets：每页在合并全文中的起始偏移（A1 精确页码映射）
+            page_texts: list = []
+            text_parts = []
+            page_offsets: list = []   # [(start_offset, page_num), ...]
+            running = 0
+            for page_num, page_text in cleaned_pages:
+                page_offsets.append((running, page_num))
+                running += len(page_text) + 1   # +1 for the joining '\n'
                 text_parts.append(page_text)
+                page_texts.append((page_num, page_text))
                 for li, line in enumerate(page_text.split('\n'), 1):
                     if line.strip():
                         key = line.strip()[:50]
                         if key not in page_line_index:
-                            page_line_index[key] = {"page": pi + 1, "line": li}
-            _doc.close()
+                            page_line_index[key] = {"page": page_num, "line": li}
             text = "\n".join(text_parts)
 
             _emit_task_event(task_id, {
@@ -730,11 +870,12 @@ def _run_review_task_sync(
                 "page_start": p0 + 1,
                 "page_end": p1,
                 "total_pages": total_pages,
-                "message": f"PDF 解析完成：{page_range_desc}，共 {len(text):,} 字",
+                "message": f"PDF 解析完成（已清洗噪音）：{page_range_desc}，共 {len(text):,} 字",
             })
         else:
             _update_task(task_id, progress=10, message="正在提取 Word 文本")
             text = _extract_docx_text(input_path)
+            page_offsets = []
             for i, line in enumerate(text.split('\n'), 1):
                 if line.strip():
                     key = line.strip()[:50]
@@ -752,12 +893,36 @@ def _run_review_task_sync(
             raise ValueError("无法从文档中提取文本，请检查文件内容")
 
         source_preview = text[:60000]
+        source_truncated = len(text) > 60000
         _update_task(task_id, source_text=source_preview, progress=12)
+        if source_truncated:
+            _emit_task_event(task_id, {
+                "type": "preprocess_notice",
+                "message": f"⚠️ 原文较长（{len(text):,} 字），原文预览仅显示前 6 万字；"
+                           f"超出部分的问题仍会列出页码/行号，但不在预览区高亮。",
+            })
 
         if _is_cancelled(task_id):
             raise TaskCancelledException()
 
-        # ── 2. 两阶段并行审稿（Phase1/Phase2 始终使用各自独立配置）──────────────
+        # ── 2. 构建 offset→page 映射（A1：基于真实字符偏移，取代等宽假设）──────
+        chunk_size = 2000
+        if file_type == ".pdf" and page_offsets:
+            _po = list(page_offsets)   # [(start_offset, page_num), ...] 已按顺序
+
+            def offset_to_page(off: int, _po=_po):
+                page = _po[0][1]
+                for start_off, pg in _po:
+                    if off >= start_off:
+                        page = pg
+                    else:
+                        break
+                return page
+        else:
+            page_texts = []
+            offset_to_page = None
+
+        # ── 3. 两阶段并行审稿（Phase1/Phase2 始终使用各自独立配置）──────────────
         llm        = LLMProviderFactory.from_hybrid_phase(config, phase=1)
         llm_phase2 = LLMProviderFactory.from_hybrid_phase(config, phase=2)
         _emit_task_event(task_id, {
@@ -773,14 +938,13 @@ def _run_review_task_sync(
             kb_manager=kb_manager,
             config=config,
             max_workers=3,
-            chunk_size=2000,
+            chunk_size=chunk_size,
         )
 
         def event_callback(event_type: str, **kwargs) -> None:
             if _is_cancelled(task_id):
                 raise TaskCancelledException()
             _emit_task_event(task_id, {"type": event_type, **kwargs})
-            # Keep legacy progress field in sync
             if event_type == "phase_start":
                 phase = kwargs.get("phase", 1)
                 _update_task(task_id,
@@ -798,6 +962,7 @@ def _run_review_task_sync(
             kb_category=kb_category or None,
             event_callback=event_callback,
             cancel_check=lambda: _is_cancelled(task_id),
+            offset_to_page=offset_to_page,
         )
 
         if _is_cancelled(task_id):
@@ -806,31 +971,150 @@ def _run_review_task_sync(
         result.source_file = input_path
         result.source_text = source_preview
 
-        # ── 3. 匹配页码/行号 ───────────────────────────────────────────────────
+        # ── 3.5 确定性敏感词/合规扫描（不依赖 LLM，保证召回）──────────────────
+        # 政治/敏感把关不能仅靠在线模型，这里用可审计、可维护的词库做确定性扫描。
+        scan_dims = [d for d in (dimensions or []) if d in ("politics", "sensitive", "copyright")]
+        if scan_dims:
+            scan_input = page_texts if (file_type == ".pdf" and page_texts) else [(1, text)]
+            try:
+                scanned = scan_pages(scan_input, dimensions=scan_dims)
+            except Exception as scan_err:
+                scanned = []
+                _emit_task_event(task_id, {"type": "chunk_error",
+                                           "dimension": "sensitive",
+                                           "error": f"敏感词扫描失败：{scan_err}"})
+            new_issues = []
+            for d in scanned:
+                try:
+                    new_issues.append(ReviewIssue(**{
+                        "issue_type": d["issue_type"],
+                        "severity": d.get("severity", "medium"),
+                        "page": d.get("page"),
+                        "line": d.get("line"),
+                        "original": d.get("original", ""),
+                        "suggestion": d.get("suggestion", ""),
+                        "reason": d.get("reason", ""),
+                        "dimension": d.get("dimension"),
+                        "confidence": d.get("confidence", 0.6),
+                        "needs_review": d.get("needs_review", True),
+                    }))
+                except Exception:
+                    continue
+            if new_issues:
+                result.issues.extend(new_issues)
+                for d in scan_dims:
+                    result.dimension_stats[d] = result.dimension_stats.get(d, 0) + \
+                        sum(1 for i in new_issues if (i.dimension or i.issue_type) == d)
+                _emit_task_event(task_id, {
+                    "type": "chunk_done",
+                    "chunk": -1,
+                    "dimension": "sensitive",
+                    "dim_name": "敏感词库扫描",
+                    "issues": [i.model_dump() for i in new_issues],
+                    "count": len(new_issues),
+                    "message": f"确定性敏感词扫描命中 {len(new_issues)} 处（已标注需人工复核）",
+                })
+
+        # ── 4. 匹配精确页码 + 行号（通过 page_line_index 补全位置信息）──────────
+        # 注意：orchestrator 只能给出“约第 X 页”的估算页码且不含行号，
+        # 这里通过原文内容回查 page_line_index，取得精确的页码与行号。
+        # A4：先对 key 做归一化（去空白/标点），提升 LLM 改写片段的回填命中率。
+        norm_index = {_normalize_for_match(k): v for k, v in page_line_index.items()}
+        norm_text = _normalize_for_match(text)
         for issue in result.issues:
-            if page_line_index and issue.original:
-                # Try progressively shorter keys to find a match
-                for length in (50, 30, 20, 15):
-                    key = issue.original[:length]
-                    if key in page_line_index:
-                        pos = page_line_index[key]
-                        issue.page = pos["page"]
+            if not page_line_index or not issue.original:
+                continue
+            if issue.page and issue.line:
+                continue  # already fully located
+            orig = issue.original.strip()
+            if len(orig) < 4:
+                continue
+            matched = False
+            # Strategy 1: exact prefix-key match (strict→loose)
+            for length in (40, 25, 15, 10):
+                if len(orig) < length:
+                    continue
+                key = orig[:length]
+                if key in page_line_index:
+                    issue.page = page_line_index[key]["page"]
+                    issue.line = page_line_index[key].get("line")
+                    matched = True
+                    break
+            if matched:
+                continue
+            # Strategy 2 (A4): 归一化前缀匹配
+            norm_orig = _normalize_for_match(orig)
+            for length in (30, 20, 12, 8):
+                if len(norm_orig) < length:
+                    continue
+                nk = norm_orig[:length]
+                hit = norm_index.get(nk)
+                if hit:
+                    issue.page = hit["page"]
+                    issue.line = hit.get("line")
+                    matched = True
+                    break
+            if matched:
+                continue
+            # Strategy 3: substring scan — 用归一化开头互相包含来匹配
+            head = norm_orig[:10]
+            if head:
+                for nkey, pos_info in norm_index.items():
+                    if head in nkey or nkey[:10] in norm_orig:
+                        issue.page = pos_info["page"]
+                        issue.line = pos_info.get("line")
                         break
+
+        # ── 4.5 幻觉校验（A5）：original 不在原文则降置信并标注需人工复核 ────────
+        for issue in result.issues:
+            if not issue.original or getattr(issue, "_scanner", False):
+                continue
+            no = _normalize_for_match(issue.original)
+            if len(no) >= 6 and no not in norm_text:
+                issue.confidence = min(issue.confidence, 0.3)
+                issue.needs_review = True
+                if "未在原文精确匹配" not in (issue.reason or ""):
+                    issue.reason = (issue.reason or "") + "（原文未精确匹配，疑似改写/幻觉，需人工核对）"
+
+        # ── 4.8 去重（A8）：同一 (page,line,归一化original) 合并，保留高严重度 ────
+        _SEV_RANK = {"high": 3, "medium": 2, "low": 1}
+        _dedup: Dict[tuple, "ReviewIssue"] = {}
+        for issue in result.issues:
+            k = (issue.dimension or issue.issue_type,
+                 issue.page, issue.line,
+                 _normalize_for_match(issue.original)[:40])
+            prev = _dedup.get(k)
+            if prev is None:
+                _dedup[k] = issue
+            else:
+                if _SEV_RANK.get(issue.severity, 0) > _SEV_RANK.get(prev.severity, 0):
+                    _dedup[k] = issue
+        result.issues = list(_dedup.values())
+        result.dimension_stats = {}
+        for issue in result.issues:
+            d = issue.dimension or issue.issue_type
+            result.dimension_stats[d] = result.dimension_stats.get(d, 0) + 1
 
         # ── 4. 序列化问题列表（含页码行号）────────────────────────────────────
         issues_dicts = [
             i.model_dump() if hasattr(i, "model_dump") else dict(i)
             for i in result.issues
         ]
-        # Enrich with display_location field for UI
+        # Enrich with display_location field for UI (page + line)
         for iss in issues_dicts:
             pg = iss.get("page") or ""
-            iss["display_location"] = f"第 {pg} 页" if pg else ""
+            ln = iss.get("line") or ""
+            if pg and ln:
+                iss["display_location"] = f"第 {pg} 页 第 {ln} 行"
+            elif pg:
+                iss["display_location"] = f"第 {pg} 页"
+            else:
+                iss["display_location"] = ""
 
         # ── 5. 导出文件（始终保存 JSON + TXT 到 output，可选 md/csv）────────────
         _update_task(task_id, progress=93, message="正在导出结果")
         exports: Dict[str, str] = {}
-        stem = Path(file_name).stem
+        stem = _sanitize_filename(Path(file_name).stem) or "document"
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # 按维度分组 issues
@@ -872,7 +1156,12 @@ def _run_review_task_sync(
             "issues": issues_dicts,
             "revised_text": result.revised_text,
             "dimension_stats": result.dimension_stats,
+            "skipped_pages": skipped_pages if file_type == ".pdf" else [],
             "source_text": source_preview,
+            "source_truncated": source_truncated,
+            "text_length": len(text),
+            "failed_tasks": getattr(result, "failed_tasks", 0),
+            "incomplete": getattr(result, "incomplete", False),
             "exports": exports,
             "file_type": file_type,
             "json_path": str(save_path),
@@ -928,8 +1217,13 @@ def _write_txt_report(
         "logic":       "🧠 逻辑结构",
         "fact":        "🔍 事实核查",
         "qa_check":    "📋 题目校验",
+        "politics":    "🛡️ 政治审查",
+        "sensitive":   "🚫 敏感违禁词",
+        "structure":   "🏗️ 框架结构",
+        "copyright":   "©️ 版权与引用",
     }
-    DIM_ORDER = ["grammar", "spelling", "style", "terminology", "logic", "fact", "qa_check"]
+    DIM_ORDER = ["politics", "sensitive", "copyright", "structure", "grammar", "spelling",
+                 "style", "terminology", "logic", "fact", "qa_check"]
 
     # Build grouped dict if not provided
     if issues_by_dim is None:
@@ -973,44 +1267,50 @@ def _write_txt_report(
 
     lines += [""]
 
-    # Per-dimension sections
-    global_idx = 1
-    for dim_key in DIM_ORDER:
-        dim_issues = issues_by_dim.get(dim_key, [])
-        if not dim_issues:
-            continue
-        label = DIM_MAP.get(dim_key, dim_key)
-        lines += [
-            "",
-            f"{'=' * 65}",
-            f"  {label}  （{len(dim_issues)} 处）",
-            f"{'=' * 65}",
-        ]
-        for iss in dim_issues:
-            pg  = iss.get("page") or ""
-            loc = f"第 {pg} 页  " if pg else ""
-            sev = SEV_MAP.get(iss.get("severity", ""), iss.get("severity", ""))
-            nr  = "  ⚠需人工复核" if iss.get("needs_review") else ""
-            lines.append(f"\n[{global_idx:3d}]  {loc}[{sev}]{nr}")
-            lines.append(f"  原文：{iss.get('original', '')}")
-            lines.append(f"  建议：{iss.get('suggestion', '')}")
-            lines.append(f"  原因：{iss.get('reason', '')}")
-            global_idx += 1
+    # ── 问题明细：按「页 → 行」顺序排列（不再按维度分组）──────────────────────
+    # 排序键：页码升序 → 行号升序 → 维度顺序；缺页码/行号的排到最后。
+    _dim_rank = {k: i for i, k in enumerate(DIM_ORDER)}
 
-    # Any unexpected dimensions not in DIM_ORDER
-    for dim_key, dim_issues in issues_by_dim.items():
-        if dim_key in DIM_ORDER or not dim_issues:
-            continue
-        lines += ["", f"{'=' * 65}", f"  {dim_key}  （{len(dim_issues)} 处）", f"{'=' * 65}"]
-        for iss in dim_issues:
-            pg  = iss.get("page") or ""
-            loc = f"第 {pg} 页  " if pg else ""
-            sev = SEV_MAP.get(iss.get("severity", ""), iss.get("severity", ""))
-            lines.append(f"\n[{global_idx:3d}]  {loc}[{sev}]")
-            lines.append(f"  原文：{iss.get('original', '')}")
-            lines.append(f"  建议：{iss.get('suggestion', '')}")
-            lines.append(f"  原因：{iss.get('reason', '')}")
-            global_idx += 1
+    def _sort_key(iss: dict):
+        pg = iss.get("page")
+        ln = iss.get("line")
+        pg_v = pg if isinstance(pg, int) else 10 ** 9          # 无页码排最后
+        ln_v = ln if isinstance(ln, int) else 10 ** 9          # 无行号排该页最后
+        dim = iss.get("dimension") or iss.get("issue_type", "")
+        return (pg_v, ln_v, _dim_rank.get(dim, 999))
+
+    ordered_issues = sorted(issues, key=_sort_key)
+
+    lines += [
+        "",
+        f"{'=' * 65}",
+        f"  问题明细（按页码、行号顺序）  共 {len(ordered_issues)} 处",
+        f"{'=' * 65}",
+    ]
+
+    last_page = None
+    for idx, iss in enumerate(ordered_issues, 1):
+        pg  = iss.get("page") or ""
+        ln  = iss.get("line") or ""
+        # 翻到新页时插入页分隔标题，便于按页浏览
+        if pg != last_page:
+            last_page = pg
+            page_title = f"第 {pg} 页" if pg else "（未定位页码）"
+            lines += ["", f"────────────  {page_title}  ────────────"]
+        if pg and ln:
+            loc = f"第 {pg} 页 第 {ln} 行"
+        elif pg:
+            loc = f"第 {pg} 页"
+        else:
+            loc = "位置未定位"
+        dim = iss.get("dimension") or iss.get("issue_type", "")
+        dim_label = DIM_MAP.get(dim, dim)
+        sev = SEV_MAP.get(iss.get("severity", ""), iss.get("severity", ""))
+        nr  = "  ⚠需人工复核" if iss.get("needs_review") else ""
+        lines.append(f"\n[{idx:3d}]  {loc}  [{dim_label}·{sev}]{nr}")
+        lines.append(f"  原文：{iss.get('original', '')}")
+        lines.append(f"  建议：{iss.get('suggestion', '')}")
+        lines.append(f"  原因：{iss.get('reason', '')}")
 
     lines += ["", "=" * 65, "（报告结束）"]
     out_path.write_text("\n".join(lines), encoding="utf-8")

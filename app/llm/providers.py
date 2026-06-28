@@ -3,11 +3,24 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
+import time
 from typing import Optional, List, Dict
 
 import requests
 
 from app.config import load_config
+
+
+# ── 全局 LLM 并发限流（A6）────────────────────────────────────────────────────
+# 编排器对 (chunk × dimension) 并行提交，叠加两阶段后实际并发可能远超单阶段
+# max_workers，容易触发服务端 429。这里用进程级信号量给所有 LLM 请求设全局上限。
+_MAX_CONCURRENCY = int(os.getenv("LLM_MAX_CONCURRENCY", "4") or "4")
+_LLM_SEMAPHORE = threading.Semaphore(max(1, _MAX_CONCURRENCY))
+
+# 可重试的 HTTP 状态码（限流与服务端临时故障）
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "3") or "3")
 
 
 class LLMConfigError(Exception):
@@ -212,7 +225,8 @@ def _diagnose_http_error(resp: requests.Response, base_url: str = "") -> LLMConf
 
 
 class LLMProvider:
-    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.2) -> str:
+    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.2,
+             max_tokens: int = 4096) -> str:
         raise NotImplementedError
 
     def validate(self) -> dict:
@@ -242,7 +256,8 @@ class OpenAICompatibleProvider(LLMProvider):
             **self.extra_headers,
         }
 
-    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.2) -> str:
+    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.2,
+             max_tokens: int = 4096) -> str:
         if not self.base_url:
             raise LLMConfigError(
                 message="未配置 Base URL",
@@ -256,28 +271,59 @@ class OpenAICompatibleProvider(LLMProvider):
                 suggestion="请在配置页面填写 API Key。",
             )
         url = f"{self.base_url}/chat/completions"
-        try:
-            resp = requests.post(url, json={
-                'model': self.model,
-                'messages': messages,
-                'temperature': temperature,
-            }, headers=self._build_headers(), timeout=180)
-        except requests.exceptions.ConnectionError as e:
-            raise LLMConfigError(
-                message="无法连接到 LLM 服务",
-                diagnosis=str(e)[:200],
-                suggestion=f"请检查 Base URL 是否可访问：{self.base_url}，以及网络连接是否正常。",
-            )
-        except requests.exceptions.Timeout:
-            raise LLMConfigError(
-                message="连接 LLM 服务超时（180s）",
-                diagnosis="请求超时",
-                suggestion="服务响应过慢，可尝试更换模型或检查服务状态。",
-            )
-        if not resp.ok:
-            raise _diagnose_http_error(resp, self.base_url)
-        data = resp.json()
-        return data['choices'][0]['message']['content']
+        payload = {
+            'model': self.model,
+            'messages': messages,
+            'temperature': temperature,
+            'max_tokens': max_tokens,   # A3: 显式上限，避免长输出被无声截断
+        }
+        last_exc: Optional[Exception] = None
+
+        # A2: 对限流/5xx/超时/连接错误做指数退避重试；配置类错误（401/403/404）不重试。
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                with _LLM_SEMAPHORE:   # A6: 全局并发上限
+                    resp = requests.post(url, json=payload,
+                                         headers=self._build_headers(), timeout=180)
+            except requests.exceptions.ConnectionError as e:
+                last_exc = LLMConfigError(
+                    message="无法连接到 LLM 服务",
+                    diagnosis=str(e)[:200],
+                    suggestion=f"请检查 Base URL 是否可访问：{self.base_url}，以及网络连接是否正常。",
+                )
+            except requests.exceptions.Timeout:
+                last_exc = LLMConfigError(
+                    message="连接 LLM 服务超时（180s）",
+                    diagnosis="请求超时",
+                    suggestion="服务响应过慢，可尝试更换模型或检查服务状态。",
+                )
+            else:
+                if resp.ok:
+                    data = resp.json()
+                    content = data['choices'][0]['message']['content']
+                    finish = ""
+                    try:
+                        finish = data['choices'][0].get('finish_reason', '') or ""
+                    except Exception:
+                        finish = ""
+                    # A3: 标注被截断的输出，供上层重试/降粒度处理
+                    if finish == "length":
+                        return content + "\n<<TRUNCATED>>"
+                    return content
+                # 非 2xx：可重试状态码才重试，否则立即抛配置诊断
+                if resp.status_code not in _RETRYABLE_STATUS:
+                    raise _diagnose_http_error(resp, self.base_url)
+                last_exc = _diagnose_http_error(resp, self.base_url)
+
+            # 还有重试机会则退避后继续
+            if attempt < _MAX_RETRIES:
+                time.sleep(min(8.0, 1.5 * (2 ** attempt)))
+
+        # 重试耗尽
+        if isinstance(last_exc, Exception):
+            raise last_exc
+        raise LLMConfigError(message="LLM 请求失败", diagnosis="未知错误",
+                             suggestion="请稍后重试。")
 
     def validate(self) -> dict:
         """快速验证：发送一个最小请求，检测配置是否有效。"""
@@ -319,7 +365,8 @@ class OpenAICompatibleProvider(LLMProvider):
 
 
 class MockProvider(LLMProvider):
-    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.2) -> str:
+    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.2,
+             max_tokens: int = 4096) -> str:
         return json.dumps({
             "summary": "⚠️ 当前使用的是【模拟模式】，并未对文档做任何分析。\n请到配置页面设置真实的 LLM（如 OpenAI / DeepSeek / Ollama）再重新审稿。",
             "revised_text": "【模拟模式未生成任何内容】",

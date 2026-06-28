@@ -14,9 +14,16 @@ class ReviewExporter:
         p.parent.mkdir(parents=True, exist_ok=True)
         lines = [f"# 审稿报告\n", f"来源：{result.source_file}\n", "## 摘要\n", result.summary, "\n## 修订稿\n", result.revised_text, "\n## 问题列表\n"]
         for i, issue in enumerate(result.issues, start=1):
+            if issue.page and issue.line:
+                loc = f"第 {issue.page} 页 第 {issue.line} 行"
+            elif issue.page:
+                loc = f"第 {issue.page} 页"
+            else:
+                loc = "（未定位）"
             lines.append(f"### 问题 {i}")
             lines.append(f"- 类型：{issue.issue_type}")
             lines.append(f"- 严重程度：{issue.severity}")
+            lines.append(f"- 位置：{loc}")
             lines.append(f"- 原文：{issue.original}")
             lines.append(f"- 建议：{issue.suggestion}")
             lines.append(f"- 原因：{issue.reason}")
@@ -28,9 +35,9 @@ class ReviewExporter:
         p.parent.mkdir(parents=True, exist_ok=True)
         with p.open('w', encoding='utf-8-sig', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['issue_type', 'severity', 'page', 'block_id', 'original', 'suggestion', 'reason', 'evidence'])
+            writer.writerow(['issue_type', 'severity', 'page', 'line', 'block_id', 'original', 'suggestion', 'reason', 'evidence'])
             for it in result.issues:
-                writer.writerow([it.issue_type, it.severity, it.page, it.block_id, it.original, it.suggestion, it.reason, it.evidence])
+                writer.writerow([it.issue_type, it.severity, it.page, it.line, it.block_id, it.original, it.suggestion, it.reason, it.evidence])
 
     def export_json(self, result: ReviewResult, out_path: str):
         p = Path(out_path)

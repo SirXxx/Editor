@@ -6,10 +6,28 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 RULES_PATH = Path("data/workspace/review_rules.json")
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """原子写：先写临时文件再 os.replace，避免并发/中断导致文件损坏（O5）。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp, str(path))
+    finally:
+        if os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
 
 # ── 内置规则定义（每条规则有唯一 id、名称、说明、适用维度、默认启用状态）────────
 # 分三组：
@@ -226,11 +244,11 @@ class ReviewRulesManager:
         builtin_ids = {r["id"] for r in BUILTIN_RULE_DEFS}
         rule_states = {r["id"]: r["enabled"] for r in self._rules if r["id"] in builtin_ids}
         custom_rules = [r for r in self._rules if r["id"] not in builtin_ids]
-        RULES_PATH.write_text(json.dumps({
+        _atomic_write_text(RULES_PATH, json.dumps({
             "rule_states": rule_states,
             "custom_rules": custom_rules,
             "custom_text": self._custom_text,
-        }, ensure_ascii=False, indent=2), encoding="utf-8")
+        }, ensure_ascii=False, indent=2))
 
     def to_dict(self) -> Dict[str, Any]:
         return {

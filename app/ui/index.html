@@ -30,7 +30,35 @@ header{height:50px;background:rgba(13,20,36,.95);border-bottom:1px solid var(--b
   color:var(--muted);cursor:pointer;font-size:12px;font-family:inherit;transition:.15s}
 .h-btn:hover{border-color:var(--primary);color:var(--text)}
 .status-chip{padding:5px 12px;border-radius:20px;background:rgba(59,130,246,.12);
-  border:1px solid rgba(59,130,246,.3);color:#93c5fd;font-size:12px}
+  border:1px solid rgba(59,130,246,.3);color:#93c5fd;font-size:12px;
+  display:inline-flex;align-items:center;gap:7px;max-width:340px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-chip .sc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#93c5fd}
+.status-chip.sc-idle{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.3);color:#cbd5e1}
+.status-chip.sc-idle .sc-dot{background:#94a3b8}
+.status-chip.sc-loading,.status-chip.sc-running{background:rgba(59,130,246,.14);border-color:rgba(59,130,246,.45);color:#93c5fd}
+.status-chip.sc-loading .sc-dot,.status-chip.sc-running .sc-dot{background:#3b82f6;animation:scpulse 1s ease-in-out infinite}
+.status-chip.sc-success{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.45);color:#86efac}
+.status-chip.sc-success .sc-dot{background:#22c55e}
+.status-chip.sc-warning{background:rgba(245,158,11,.16);border-color:rgba(245,158,11,.5);color:#fcd34d}
+.status-chip.sc-warning .sc-dot{background:#f59e0b;animation:scpulse 1.2s ease-in-out infinite}
+.status-chip.sc-error{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.55);color:#fca5a5}
+.status-chip.sc-error .sc-dot{background:#ef4444;animation:scpulse .8s ease-in-out infinite}
+@keyframes scpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}
+
+/* Top connection / health banner */
+#connBanner{display:none;align-items:center;gap:10px;padding:9px 16px;font-size:13px;
+  border-bottom:1px solid transparent}
+#connBanner.show{display:flex}
+#connBanner.warn{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.4);color:#fcd34d}
+#connBanner.err{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.45);color:#fca5a5}
+#connBanner .cb-spin{width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;
+  border-radius:50%;animation:cbspin .8s linear infinite;flex-shrink:0}
+#connBanner .cb-x{margin-left:auto;cursor:pointer;opacity:.7;background:none;border:none;
+  color:inherit;font-size:15px;line-height:1}
+#connBanner .cb-retry{padding:3px 12px;border-radius:7px;border:1px solid currentColor;
+  background:transparent;color:inherit;cursor:pointer;font-size:12px;font-family:inherit}
+@keyframes cbspin{to{transform:rotate(360deg)}}
 
 .workspace{flex:1;display:grid;grid-template-columns:2fr 1.1fr 1.6fr;gap:10px;
   padding:10px;min-height:0;overflow:hidden}
@@ -209,10 +237,19 @@ footer span{font-size:11px;color:var(--muted)}
   <div class="header-actions">
     <button class="h-btn" onclick="openKB()">📚 知识库</button>
     <button class="h-btn" onclick="openRules()" id="rulesBtn">📏 自定义规则</button>
+    <button class="h-btn" onclick="openLexicon()" id="lexiconBtn">🚫 敏感词库</button>
     <button class="h-btn" onclick="openConfig()">⚙ 配置模型</button>
-    <div class="status-chip" id="headerStatus">就绪</div>
+    <div class="status-chip sc-idle" id="headerStatus"><span class="sc-dot"></span><span id="headerStatusText">就绪</span></div>
   </div>
 </header>
+
+<!-- ── Connection / health banner ─────────────────────── -->
+<div id="connBanner">
+  <span id="connBannerIcon"></span>
+  <span id="connBannerText"></span>
+  <button class="cb-retry" id="connBannerRetry" onclick="recheckBackend()" style="display:none">重试连接</button>
+  <button class="cb-x" onclick="dismissConnBanner()" title="关闭">✕</button>
+</div>
 
 <!-- ── Three-column workspace ─────────────────────────── -->
 <div class="workspace">
@@ -362,6 +399,11 @@ footer span{font-size:11px;color:var(--muted)}
             <button onclick="setPageRange(1,100)" class="btn-secondary" style="padding:3px 9px;font-size:10px;flex:1">前100页</button>
             <button onclick="setPageRange(1,0)"   class="btn-secondary" style="padding:3px 9px;font-size:10px;flex:1">全文</button>
           </div>
+          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--muted)">
+            <input type="checkbox" id="includeFrontPages" style="accent-color:#3b82f6"/>
+            包含前置页（不自动跳过审校封面/概览）
+          </label>
+          <div id="preprocessNotice" style="display:none;margin-top:6px;font-size:11px;color:#f59e0b"></div>
         </div>
 
         <button class="btn-primary" id="startBtn" onclick="startReview()" disabled>选择文档后开始审稿</button>
@@ -392,6 +434,10 @@ footer span{font-size:11px;color:var(--muted)}
       <div class="filter-row" style="width:100%">
         <select class="filter-sel" id="filterDim" onchange="renderIssues()">
           <option value="">全部维度</option>
+          <option value="politics">政治审查</option>
+          <option value="sensitive">敏感违禁词</option>
+          <option value="structure">框架结构</option>
+          <option value="copyright">版权与引用</option>
           <option value="grammar">语法文字</option>
           <option value="spelling">格式规范</option>
           <option value="style">语气风格</option>
@@ -676,6 +722,50 @@ footer span{font-size:11px;color:var(--muted)}
   </div>
 </div>
 
+<!-- ── Sensitive Lexicon Modal ──────────────────────────── -->
+<div class="modal-overlay" id="lexiconOverlay" onclick="if(event.target===this)closeLexicon()">
+  <div class="modal">
+    <h3>🚫 敏感词库管理</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+      词库用于<b>确定性扫描</b>（不依赖大模型），命中即标注「需人工复核」。
+      适合维护广告法极限词、涉政敏感表述、落马/敏感人物名单等，可随选题持续扩充。
+    </p>
+
+    <div id="lexiconValidBox" style="display:none;border-radius:10px;padding:8px 12px;
+      margin-bottom:10px;font-size:12px"></div>
+
+    <div id="lexiconList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px">
+      <div style="color:var(--muted);font-size:12px">加载中…</div>
+    </div>
+
+    <div class="section-sep">新增分类</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <input id="newLexCat" placeholder="分类标识（英文，如 banned_person）"
+        style="flex:2;min-width:160px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);
+          background:rgba(0,0,0,.2);color:var(--text);font-family:inherit;font-size:12px"/>
+      <select id="newLexDim" style="flex:1;min-width:120px;padding:7px 8px;border-radius:8px;
+        border:1px solid var(--border);background:rgba(0,0,0,.2);color:var(--text);
+        font-family:inherit;font-size:12px">
+        <option value="sensitive">敏感违禁词</option>
+        <option value="politics">政治审查</option>
+      </select>
+      <select id="newLexSev" style="flex:1;min-width:90px;padding:7px 8px;border-radius:8px;
+        border:1px solid var(--border);background:rgba(0,0,0,.2);color:var(--text);
+        font-family:inherit;font-size:12px">
+        <option value="high">严重</option>
+        <option value="medium" selected>中等</option>
+        <option value="low">轻微</option>
+      </select>
+      <button class="btn-secondary" onclick="addLexCategory()" style="padding:7px 14px;white-space:nowrap">+ 添加分类</button>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-primary" style="flex:1" onclick="saveLexicon()">💾 保存词库</button>
+      <button class="btn-secondary" onclick="closeLexicon()">取消</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── KB Modal ─────────────────────────────────────────── -->
 <div class="modal-overlay" id="kbOverlay" onclick="if(event.target===this)closeKB()">
   <div class="modal">
@@ -729,6 +819,10 @@ footer span{font-size:11px;color:var(--muted)}
 // Constants
 // ──────────────────────────────────────────────────────────────────────────────
 const DIMS = {
+  politics:    {name:'政治审查',  icon:'🛡️', color:'#dc2626',         bg:'rgba(220,38,38,0.15)'},
+  sensitive:   {name:'敏感违禁词',icon:'🚫', color:'#e11d48',         bg:'rgba(225,29,72,0.15)'},
+  structure:   {name:'框架结构',  icon:'🏗️', color:'#0ea5e9',         bg:'rgba(14,165,233,0.15)'},
+  copyright:   {name:'版权与引用',icon:'©️', color:'#7c3aed',         bg:'rgba(124,58,237,0.15)'},
   grammar:     {name:'语法文字',  icon:'📝', color:'var(--g-red)',    bg:'rgba(239,68,68,0.15)'},
   spelling:    {name:'格式规范',  icon:'🔢', color:'var(--g-orange)', bg:'rgba(249,115,22,0.15)'},
   style:       {name:'语气风格',  icon:'🎨', color:'var(--g-purple)', bg:'rgba(168,85,247,0.15)'},
@@ -740,19 +834,25 @@ const DIMS = {
 const DIM_COLORS = {
   grammar:'#ef4444', spelling:'#f97316', style:'#a855f7',
   terminology:'#06b6d4', logic:'#22c55e', fact:'#eab308', qa_check:'#f43f5e',
+  politics:'#dc2626', sensitive:'#e11d48', structure:'#0ea5e9', copyright:'#7c3aed',
 };
 const TYPE_TO_DIM = {
   grammar:'grammar', spelling:'spelling', format:'spelling',
   style:'style', terminology:'terminology', logic:'logic',
   fact:'fact', reference:'fact', qa_check:'qa_check',
+  politics:'politics', sensitive:'sensitive', structure:'structure', copyright:'copyright',
 };
 const SEV_COLOR = {high:'#ef4444', medium:'#f59e0b', low:'#22c55e'};
 const DEFAULT_CATS = ['editor','general','law','biology','chemistry','physics'];
 const CAT_LABELS = {editor:'编辑规范',general:'通用',law:'法律',
   biology:'生物',chemistry:'化学',physics:'物理'};
 
-// All 7 dimensions definition (matches backend)
+// All dimensions definition (matches backend)
 const ALL_DIMS_DEF = [
+  {key:'politics',   name:'政治审查',  icon:'🛡️', color:'#dc2626', bg:'rgba(220,38,38,0.15)',    phase:2, defaultOn:true},
+  {key:'sensitive',  name:'敏感违禁词',icon:'🚫', color:'#e11d48', bg:'rgba(225,29,72,0.15)',    phase:1, defaultOn:true},
+  {key:'structure',  name:'框架结构',  icon:'🏗️', color:'#0ea5e9', bg:'rgba(14,165,233,0.15)',   phase:2, defaultOn:true},
+  {key:'copyright',  name:'版权与引用',icon:'©️', color:'#7c3aed', bg:'rgba(124,58,237,0.15)',   phase:2, defaultOn:true},
   {key:'grammar',    name:'语法文字',  icon:'📝', color:'#ef4444', bg:'rgba(239,68,68,0.15)',    phase:1, defaultOn:true},
   {key:'spelling',   name:'格式规范',  icon:'🔢', color:'#f97316', bg:'rgba(249,115,22,0.15)',   phase:1, defaultOn:true},
   {key:'style',      name:'语气风格',  icon:'🎨', color:'#a855f7', bg:'rgba(168,85,247,0.15)',   phase:1, defaultOn:true},
@@ -778,7 +878,82 @@ let S = {
   },
   dimStats: {},
   status: 'idle',
+  lastActivity: 0,
+  watchdog: null,
+  warnedNoResponse: false,
+  pollFails: 0,
+  connMode: '',     // '', 'sse', 'polling'
 };
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Connectivity / health banner + no-response watchdog
+// ──────────────────────────────────────────────────────────────────────────────
+const NO_RESPONSE_MS = 45000;   // 处理中超过此时长无任何事件 → 提示无响应
+
+function showConnBanner(kind, icon, text, showRetry){
+  const b = document.getElementById('connBanner');
+  if(!b) return;
+  b.className = 'show ' + (kind === 'err' ? 'err' : 'warn');
+  document.getElementById('connBannerIcon').innerHTML =
+    (kind === 'err' ? '⛔' : (icon || '<span class="cb-spin"></span>'));
+  document.getElementById('connBannerText').textContent = text;
+  document.getElementById('connBannerRetry').style.display = showRetry ? '' : 'none';
+}
+function dismissConnBanner(){
+  const b = document.getElementById('connBanner');
+  if(b) b.className = '';
+}
+function hideConnBanner(){ dismissConnBanner(); }
+
+// Mark that we just received activity from the backend (resets watchdog)
+function markActivity(){
+  S.lastActivity = Date.now();
+  if(S.warnedNoResponse){
+    S.warnedNoResponse = false;
+    // 恢复响应后清除“无响应”横幅（保留断线类横幅由各自逻辑处理）
+    const b = document.getElementById('connBanner');
+    if(b && b.classList.contains('warn')) hideConnBanner();
+  }
+}
+
+function startWatchdog(){
+  stopWatchdog();
+  S.lastActivity = Date.now();
+  S.warnedNoResponse = false;
+  S.watchdog = setInterval(()=>{
+    if(S.status !== 'processing'){ return; }
+    const idle = Date.now() - S.lastActivity;
+    if(idle > NO_RESPONSE_MS && !S.warnedNoResponse){
+      S.warnedNoResponse = true;
+      setStatus('⚠️ 长时间无响应（' + Math.round(idle/1000) + 's）', 'warning');
+      showConnBanner('warn', '<span class="cb-spin"></span>',
+        '审稿已 ' + Math.round(idle/1000) + ' 秒没有新进展，模型可能正在处理大段文本或服务繁忙。若持续无响应，可点击“停止审稿”后重试。',
+        false);
+    }
+  }, 5000);
+}
+function stopWatchdog(){
+  if(S.watchdog){ clearInterval(S.watchdog); S.watchdog = null; }
+}
+
+// 启动时 / 手动检查后端可达性
+async function recheckBackend(){
+  showConnBanner('warn', '<span class="cb-spin"></span>', '正在检查后端连接…', false);
+  try{
+    const res = await fetch('/tasks', {cache:'no-store'});
+    if(res.ok){
+      hideConnBanner();
+      if(S.status === 'idle' || S.status === '') setStatus('就绪', 'idle');
+      return true;
+    }
+    throw new Error('HTTP ' + res.status);
+  }catch(e){
+    showConnBanner('err', '', '无法连接到后端服务（' + (e.message||'网络错误') +
+      '）。请确认服务已启动：python -m uvicorn app.api.main:app --port 8010', true);
+    setStatus('❌ 后端未连接', 'error');
+    return false;
+  }
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Dimension selector
@@ -824,13 +999,30 @@ function selectNoneDims(){
 // ──────────────────────────────────────────────────────────────────────────────
 // UI helpers
 // ──────────────────────────────────────────────────────────────────────────────
-function setStatus(msg){
-  document.getElementById('headerStatus').textContent = msg;
-  document.getElementById('footerMsg').textContent = msg;
+// 状态徽章：state ∈ idle|loading|running|success|warning|error
+// 不传 state 时根据 S.status 推断，保证旧调用也有合理颜色。
+function setStatus(msg, state){
+  const txt = document.getElementById('headerStatusText');
+  if(txt) txt.textContent = msg;
+  const foot = document.getElementById('footerMsg');
+  if(foot) foot.textContent = msg;
+  if(!state){
+    const m = String(msg||'');
+    if(/❌|失败|错误|无法|超时/.test(m)) state = 'error';
+    else if(/⚠️|警告|不完整|无响应|中断/.test(m)) state = 'warning';
+    else if(/✅|完成/.test(m)) state = 'success';
+    else if(S.status === 'processing') state = 'running';
+    else state = 'idle';
+  }
+  const chip = document.getElementById('headerStatus');
+  if(chip) chip.className = 'status-chip sc-' + state;
+  // 任何状态更新都算一次活动信号
+  markActivity();
 }
 function setProgress(pct, label){
   document.getElementById('progressFill').style.width = pct + '%';
   if(label) document.getElementById('progressLabel').textContent = label;
+  markActivity();
 }
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function escA(s){return escH(s).replace(/"/g,'&quot;')}
@@ -903,6 +1095,8 @@ async function startReview(){
   }
   resetState();
   S.status = 'processing';
+  hideConnBanner();
+  startWatchdog();
   document.getElementById('startBtn').disabled = true;
   document.getElementById('startBtn').textContent = '审稿中…';
   document.getElementById('cancelBtn').style.display = '';
@@ -910,8 +1104,11 @@ async function startReview(){
 
   const pageStart = parseInt(document.getElementById('pageStart').value) || 1;
   const pageEnd   = parseInt(document.getElementById('pageEnd').value)   || 0;
+  const includeFrontPages = !!document.getElementById('includeFrontPages').checked;
   const pageDesc  = pageEnd > 0 ? `第${pageStart}-${pageEnd}页` : `第${pageStart}页起`;
-  setStatus('正在提交任务…');
+  setStatus(includeFrontPages
+    ? '⏳ 正在提交任务…（全页审稿模式，可能包含前置审校页）'
+    : '⏳ 正在提交任务…', 'loading');
   setProgress(3, `正在上传文档（${pageDesc}）…`);
 
   const fd = new FormData();
@@ -923,19 +1120,27 @@ async function startReview(){
   fd.append('dimensions', selectedDims.join(','));
   fd.append('page_start', String(pageStart));
   fd.append('page_end',   String(pageEnd));
+  fd.append('include_front_pages', includeFrontPages ? 'true' : 'false');
 
   try {
     const res = await fetch('/tasks/review_document', {method:'POST', body:fd});
     const data = await res.json();
     if(!data.ok || !data.task_id){
-      setStatus('提交失败：' + (data.message||'未知错误'));
+      stopWatchdog();
+      S.status = 'failed';
+      setStatus('❌ 提交失败：' + (data.message||'未知错误'), 'error');
+      showConnBanner('err', '', '任务提交失败：' + (data.message||'未知错误'), false);
       resetButtons(); return;
     }
     S.taskId = data.task_id;
-    setStatus('任务已入队，建立实时连接… 维度：' + selectedDims.length + '个');
+    setStatus('📥 任务已入队，建立实时连接…（' + selectedDims.length + ' 个维度）', 'loading');
     connectSSE(data.task_id);
   } catch(e){
-    setStatus('错误：' + e.message);
+    stopWatchdog();
+    S.status = 'failed';
+    setStatus('❌ 无法连接到服务器', 'error');
+    showConnBanner('err', '', '上传/提交失败：' + (e.message||'网络错误') +
+      '。请确认后端服务正在运行。', true);
     resetButtons();
   }
 }
@@ -943,10 +1148,12 @@ async function startReview(){
 async function cancelTask(){
   if(!S.taskId) return;
   if(S.sse){ S.sse.close(); S.sse = null; }
+  stopWatchdog();
   try{ await fetch('/tasks/'+S.taskId+'/cancel', {method:'POST'}); }catch(e){}
-  setStatus('任务已取消');
+  setStatus('⏹️ 任务已取消', 'idle');
   setProgress(0,'已取消');
   document.getElementById('cancelBtn').style.display = 'none';
+  hideConnBanner();
   resetButtons();
   S.status = 'cancelled';
 }
@@ -981,6 +1188,16 @@ function resetState(){
   document.getElementById('phase2Card').className = 'phase-card';
   document.getElementById('sourceText').innerHTML =
     '<div class="src-empty">正在提取文档内容…</div>';
+  const notice = document.getElementById('preprocessNotice');
+  if(notice){
+    if(document.getElementById('includeFrontPages')?.checked){
+      notice.textContent = '⚠️ 当前为全页审稿模式：已包含前置页（可能含审校封面/概览）';
+      notice.style.display = '';
+    }else{
+      notice.style.display = 'none';
+      notice.textContent = '';
+    }
+  }
   setProgress(3,'');
 }
 
@@ -990,9 +1207,17 @@ function resetState(){
 function connectSSE(taskId){
   if(S.sse){ S.sse.close(); }
   S.sse = new EventSource('/stream/' + taskId);
+  S.connMode = 'sse';
+
+  S.sse.onopen = ()=>{
+    markActivity();
+    // 实时连接建立成功，清除可能存在的“连接中断”横幅
+    const b = document.getElementById('connBanner');
+    if(b && b.classList.contains('warn')) hideConnBanner();
+  };
 
   S.sse.addEventListener('started', e=>{
-    setStatus('文档处理中…'); setProgress(8,'开始处理文档');
+    setStatus('📖 文档处理中…', 'running'); setProgress(8,'开始处理文档');
   });
   S.sse.addEventListener('hybrid_mode', e=>{
     const d = JSON.parse(e.data);
@@ -1012,6 +1237,15 @@ function connectSSE(taskId){
     renderSource();
     setProgress(12, d.message || '文档解析完成');
     setStatus(d.message || '开始审稿');
+  });
+  S.sse.addEventListener('preprocess_notice', e=>{
+    const d = JSON.parse(e.data);
+    const notice = document.getElementById('preprocessNotice');
+    if(notice){
+      notice.textContent = '⚠️ ' + (d.message || '已跳过疑似非正文前置页');
+      notice.style.display = '';
+    }
+    setStatus(d.message || '已执行前置页过滤');
   });
   S.sse.addEventListener('phase_start', e=>{
     const d = JSON.parse(e.data);
@@ -1038,7 +1272,7 @@ function connectSSE(taskId){
       S.dimStats[dim] = (S.dimStats[dim]||0) + 1;
     });
     // Determine phase from dimension
-    const dimPhase = ['grammar','spelling','style'].includes(d.dimension) ? 1 : 2;
+    const dimPhase = ['grammar','spelling','style','sensitive'].includes(d.dimension) ? 1 : 2;
     S.phase[dimPhase].done++;
     // Update phase progress bar
     const ph = dimPhase;
@@ -1059,10 +1293,12 @@ function connectSSE(taskId){
   });
   S.sse.addEventListener('chunk_error', e=>{
     const d = JSON.parse(e.data);
+    markActivity();
     console.warn('chunk error:', d.dimension, d.error);
   });
   S.sse.addEventListener('phase_done', e=>{
     const d = JSON.parse(e.data);
+    markActivity();
     const ph = d.phase;
     S.phase[ph].finished = true;
     S.phase[ph].elapsed = d.elapsed_s || 0;
@@ -1076,8 +1312,15 @@ function connectSSE(taskId){
   S.sse.addEventListener('completed', e=>{
     const d = JSON.parse(e.data);
     S.status = 'completed';
+    stopWatchdog();
+    hideConnBanner();
     setProgress(100, '审稿完成');
-    setStatus('✅ 审稿完成，共 ' + d.total_issues + ' 处问题');
+    if(d.incomplete || d.failed_tasks){
+      setStatus('⚠️ 审稿完成（共 ' + d.total_issues + ' 处问题，但有 ' +
+        (d.failed_tasks||0) + ' 个子任务失败，结果可能不完整）', 'warning');
+    }else{
+      setStatus('✅ 审稿完成，共 ' + d.total_issues + ' 处问题', 'success');
+    }
     document.getElementById('totalIssues').textContent = d.total_issues;
     document.getElementById('issueCountBadge').textContent = S.issues.length;
     if(d.summary){
@@ -1093,16 +1336,19 @@ function connectSSE(taskId){
   S.sse.addEventListener('task_failed', e=>{
     const d = JSON.parse(e.data);
     S.status = 'failed';
-    setStatus('❌ 任务失败：' + (d.error||''));
+    stopWatchdog();
+    setStatus('❌ 任务失败：' + (d.error||''), 'error');
     setProgress(0, '任务失败');
     showErrorBanner('任务执行失败', d.error || '未知错误', '请检查文档格式或重试。');
+    showConnBanner('err', '', '审稿任务失败：' + (d.error||'未知错误'), false);
     resetButtons();
   });
   S.sse.addEventListener('config_error', e=>{
     const d = JSON.parse(e.data);
     S.status = 'failed';
+    stopWatchdog();
     setProgress(0, '⚙️ 配置错误');
-    setStatus('⚙️ 配置错误：' + d.message);
+    setStatus('⚙️ 配置错误：' + d.message, 'error');
     showErrorBanner(
       '⚙️ 模型配置错误 — 审稿无法进行',
       d.message,
@@ -1112,11 +1358,18 @@ function connectSSE(taskId){
     );
     resetButtons();
   });
-  S.sse.addEventListener('stream_end', ()=>{ S.sse.close(); S.sse = null; });
+  S.sse.addEventListener('stream_end', ()=>{
+    if(S.sse){ S.sse.close(); S.sse = null; }
+    S.connMode = '';
+  });
   S.sse.onerror = ()=>{
     if(S.status === 'completed' || S.status === 'failed' || S.status === 'cancelled') return;
-    // SSE disconnected - fall back to polling
+    // 实时连接中断 — 提示并自动切换到轮询
     S.sse = null;
+    S.connMode = 'polling';
+    setStatus('⚠️ 实时连接中断，正在切换到轮询…', 'warning');
+    showConnBanner('warn', '<span class="cb-spin"></span>',
+      '与服务器的实时连接中断，已自动切换为轮询模式继续获取进度（功能不受影响）。', false);
     if(S.taskId) startPolling(S.taskId);
   };
 }
@@ -1125,15 +1378,23 @@ function connectSSE(taskId){
 let pollTimer = null;
 function startPolling(taskId){
   if(pollTimer) clearInterval(pollTimer);
+  S.pollFails = 0;
   pollTimer = setInterval(async()=>{
     try{
-      const res = await fetch('/tasks/'+taskId);
+      const res = await fetch('/tasks/'+taskId, {cache:'no-store'});
       const d = await res.json();
+      // 轮询恢复成功 → 清除连续失败计数与错误横幅
+      if(S.pollFails > 0){
+        S.pollFails = 0;
+        const b = document.getElementById('connBanner');
+        if(b && b.classList.contains('err')) hideConnBanner();
+      }
       if(!d.ok) return;
+      markActivity();
       setProgress(d.progress||0, d.message||'');
       setStatus(d.message||d.status);
       if(d.status==='completed'){
-        clearInterval(pollTimer);
+        clearInterval(pollTimer); stopWatchdog(); hideConnBanner();
         S.status = 'completed';
         if(d.result){
           const issues = d.result.issues||[];
@@ -1145,6 +1406,11 @@ function startPolling(taskId){
             document.getElementById('summaryText').textContent = d.result.summary;
             document.getElementById('summaryBox').style.display = '';
           }
+          const incomplete = d.result.incomplete || d.result.failed_tasks;
+          setStatus(incomplete
+            ? ('⚠️ 审稿完成（' + S.issues.length + ' 处，部分子任务失败，结果可能不完整）')
+            : ('✅ 审稿完成，共 ' + S.issues.length + ' 处问题'),
+            incomplete ? 'warning' : 'success');
         }
         document.getElementById('totalIssues').textContent = S.issues.length;
         document.getElementById('issueCountBadge').textContent = S.issues.length;
@@ -1152,13 +1418,23 @@ function startPolling(taskId){
         document.getElementById('exportBtn').style.display = '';
         resetButtons();
       } else if(d.status==='failed'){
-        clearInterval(pollTimer);
-        setStatus('❌ 失败：'+(d.error||''));
+        clearInterval(pollTimer); stopWatchdog();
+        S.status = 'failed';
+        setStatus('❌ 失败：'+(d.error||''), 'error');
+        showConnBanner('err', '', '审稿任务失败：' + (d.error||'未知错误'), false);
         resetButtons();
       } else if(d.status==='cancelled'){
-        clearInterval(pollTimer); resetButtons();
+        clearInterval(pollTimer); stopWatchdog(); resetButtons();
       }
-    }catch(e){}
+    }catch(e){
+      // 轮询请求失败 — 连续多次则判定服务器不可达
+      S.pollFails = (S.pollFails||0) + 1;
+      if(S.pollFails >= 3){
+        setStatus('❌ 无法连接到服务器（已重试 ' + S.pollFails + ' 次）', 'error');
+        showConnBanner('err', '',
+          '与后端服务器失去连接，正在持续重试…请确认服务进程是否仍在运行。', true);
+      }
+    }
   }, 2000);
 }
 function buildDimStats(issues){
@@ -1322,12 +1598,15 @@ function showTooltip(ev, el){
   const pg     = issue.page || el.dataset.pg || '';
 
   // Meta row
+  const loc = issue.display_location || (issue.page
+    ? (issue.line ? `第${issue.page}页 第${issue.line}行` : `第${issue.page}页`)
+    : (el.dataset.pg ? `第${el.dataset.pg}页` : ''));
   document.getElementById('ttMeta').innerHTML =
     `<span style="font-size:11px;font-weight:700;color:${color};background:${cfg.bg};
       border-radius:4px;padding:2px 7px">${cfg.icon} ${cfg.name}</span>
      <span style="font-size:11px;color:${sevColor}">${sevLabel}</span>
-     ${pg ? `<span style="font-size:11px;color:#93c5fd;background:rgba(59,130,246,.15);
-       border-radius:4px;padding:2px 7px;margin-left:auto">📄 第${pg}页</span>` : ''}`;
+     ${loc ? `<span style="font-size:12px;color:#93c5fd;background:rgba(59,130,246,.18);
+       border-radius:4px;padding:2px 8px;margin-left:auto;font-weight:700">📄 ${escH(loc)}</span>` : ''}`;
 
   // Original text
   const origEl = document.getElementById('ttOrig');
@@ -1415,25 +1694,28 @@ function _issueCardHtml(issue, idx){
   const color = DIM_COLORS[dim] || '#3b82f6';
   const sc    = SEV_COLOR[issue.severity] || '#94a3b8';
   const pg    = issue.page || '';
-  // Page badge — prominent
-  const pageBadge = pg
+  const ln    = issue.line || '';
+  const loc   = issue.display_location || (pg ? (ln ? `第${pg}页 第${ln}行` : `第${pg}页`) : '');
+
+  // Location badge — show page AND line when available
+  const locBadge = loc
     ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;
         color:#93c5fd;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);
-        border-radius:6px;padding:2px 8px;margin-left:auto;flex-shrink:0">
-        📄 第${pg}页
-       </span>` : '';
+        border-radius:6px;padding:2px 8px;margin-left:auto;flex-shrink:0;white-space:nowrap">
+        📄 ${escH(loc)}
+       </span>` : '<span style="margin-left:auto;font-size:10px;color:#334155;flex-shrink:0">位置未知</span>';
+
   const sevLabel = {high:'严重',medium:'中等',low:'轻微'}[issue.severity] || issue.severity || '';
-  const sevColor = sc;
   return `<div class="issue-card" id="issue-${issue._id}" onclick="focusAnn('${issue._id}')">
     <div class="issue-card-hdr" style="flex-wrap:nowrap">
       <span style="font-size:10px;color:#475569;min-width:22px;flex-shrink:0">#${idx}</span>
       <span class="dim-badge" style="background:${cfg.bg};color:${color};border-color:${color}40;flex-shrink:0">
         ${cfg.icon} ${cfg.name}
       </span>
-      <span style="font-size:10px;font-weight:700;color:${sevColor};padding:2px 6px;
-        background:${sevColor}18;border-radius:4px;flex-shrink:0">${sevLabel}</span>
+      <span style="font-size:10px;font-weight:700;color:${sc};padding:2px 6px;
+        background:${sc}18;border-radius:4px;flex-shrink:0">${sevLabel}</span>
       ${issue.needs_review ? '<span class="nr-badge" style="flex-shrink:0">⚠ 需复核</span>' : ''}
-      ${pageBadge}
+      ${locBadge}
     </div>
     <div class="issue-orig">${escH(issue.original||'')}</div>
     <div class="issue-sugg">→ ${escH(issue.suggestion||'')}</div>
@@ -1524,7 +1806,7 @@ function renderIssues(){
   }
 
   // Default: group by dimension (dim)
-  const DIM_ORDER = ['grammar','spelling','style','terminology','logic','fact','qa_check'];
+  const DIM_ORDER = ['politics','sensitive','copyright','structure','grammar','spelling','style','terminology','logic','fact','qa_check'];
   const byDim = {};
   for(const iss of filtered){
     const dk = iss.dimension || TYPE_TO_DIM[iss.issue_type] || iss.issue_type;
@@ -1984,6 +2266,129 @@ async function syncRulesFromFile(){
   setStatus('✅ 规则已从文件同步');
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Sensitive lexicon editor
+// ──────────────────────────────────────────────────────────────────────────────
+let _lexicon = {categories:{}};
+
+function openLexicon(){
+  document.getElementById('lexiconOverlay').classList.add('open');
+  loadLexicon();
+}
+function closeLexicon(){ document.getElementById('lexiconOverlay').classList.remove('open'); }
+
+async function loadLexicon(){
+  const el = document.getElementById('lexiconList');
+  try{
+    const res = await fetch('/config/sensitive_lexicon');
+    const data = await res.json();
+    _lexicon = data.lexicon || {categories:{}};
+    if(!_lexicon.categories) _lexicon.categories = {};
+    renderLexicon();
+  }catch(e){
+    if(el) el.innerHTML = '<div style="color:#ef4444;font-size:12px">加载失败：'+e.message+'</div>';
+  }
+}
+
+const LEX_DIM_LABEL = {politics:'政治审查', sensitive:'敏感违禁词'};
+
+function renderLexicon(){
+  const el = document.getElementById('lexiconList');
+  if(!el) return;
+  const cats = _lexicon.categories || {};
+  const keys = Object.keys(cats);
+  if(keys.length === 0){
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px">暂无分类，请在下方添加。</div>';
+    return;
+  }
+  el.innerHTML = keys.map(cat=>{
+    const c = cats[cat] || {};
+    const dim = c.dimension || 'sensitive';
+    const sev = c.severity || 'medium';
+    const terms = (c.terms || []).join('、');
+    const color = DIM_COLORS[dim] || '#e11d48';
+    return `
+    <div style="border:1px solid var(--border);border-left:3px solid ${color};border-radius:10px;
+      padding:10px 12px;background:rgba(0,0,0,.18)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+        <span style="font-weight:700;font-size:12px;color:${color}">${cat}
+          <span style="color:var(--muted);font-weight:400">· ${LEX_DIM_LABEL[dim]||dim}</span></span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select onchange="setLexSeverity('${cat}', this.value)"
+            style="padding:3px 6px;border-radius:6px;border:1px solid var(--border);
+              background:rgba(0,0,0,.3);color:var(--text);font-size:11px">
+            <option value="high" ${sev==='high'?'selected':''}>严重</option>
+            <option value="medium" ${sev==='medium'?'selected':''}>中等</option>
+            <option value="low" ${sev==='low'?'selected':''}>轻微</option>
+          </select>
+          <button onclick="removeLexCategory('${cat}')" title="删除分类"
+            style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px">🗑</button>
+        </div>
+      </div>
+      <textarea oninput="setLexTerms('${cat}', this.value)" rows="2"
+        placeholder="词条，用顿号、逗号或换行分隔"
+        style="width:100%;padding:7px 9px;border-radius:8px;border:1px solid var(--border);
+          background:rgba(0,0,0,.3);color:var(--text);font-family:inherit;font-size:12px;
+          resize:vertical;line-height:1.6">${terms}</textarea>
+      <input value="${(c.advice||'').replace(/"/g,'&quot;')}" oninput="setLexAdvice('${cat}', this.value)"
+        placeholder="处理建议（命中后展示给编辑）"
+        style="width:100%;margin-top:6px;padding:6px 9px;border-radius:8px;border:1px solid var(--border);
+          background:rgba(0,0,0,.2);color:var(--text);font-family:inherit;font-size:11px"/>
+    </div>`;
+  }).join('');
+}
+
+function _splitTerms(v){
+  return (v||'').split(/[、，,\n]/).map(s=>s.trim()).filter(Boolean);
+}
+function setLexTerms(cat, v){
+  if(_lexicon.categories[cat]) _lexicon.categories[cat].terms = _splitTerms(v);
+}
+function setLexSeverity(cat, v){
+  if(_lexicon.categories[cat]) _lexicon.categories[cat].severity = v;
+}
+function setLexAdvice(cat, v){
+  if(_lexicon.categories[cat]) _lexicon.categories[cat].advice = v;
+}
+function removeLexCategory(cat){
+  if(!confirm('确定删除分类「'+cat+'」？')) return;
+  delete _lexicon.categories[cat];
+  renderLexicon();
+}
+function addLexCategory(){
+  const name = (document.getElementById('newLexCat').value||'').trim();
+  if(!name){ setStatus('⚠️ 请填写分类标识'); return; }
+  if(_lexicon.categories[name]){ setStatus('⚠️ 分类已存在'); return; }
+  _lexicon.categories[name] = {
+    dimension: document.getElementById('newLexDim').value,
+    severity:  document.getElementById('newLexSev').value,
+    advice: '命中后请人工复核。',
+    terms: [],
+  };
+  document.getElementById('newLexCat').value = '';
+  renderLexicon();
+}
+
+async function saveLexicon(){
+  const box = document.getElementById('lexiconValidBox');
+  try{
+    const res = await fetch('/config/sensitive_lexicon',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lexicon:_lexicon})});
+    const data = await res.json();
+    if(box){
+      box.style.display = '';
+      box.style.background = data.ok ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)';
+      box.style.color = data.ok ? '#4ade80' : '#f87171';
+      box.textContent = (data.ok?'✅ ':'❌ ') + (data.message||'');
+    }
+    if(data.ok) setStatus('✅ ' + data.message);
+  }catch(e){
+    if(box){ box.style.display=''; box.style.color='#f87171'; box.textContent='❌ 保存失败：'+e.message; }
+  }
+}
+
+
 const DIM_NAMES_SHORT = {
   spelling:'格式规范', grammar:'语法文字', style:'语气风格',
   terminology:'专业术语', fact:'事实核查', logic:'逻辑结构', qa_check:'题目校验',
@@ -2181,6 +2586,15 @@ async function importKBUrl(){
 buildDimSelector();
 loadConfig();
 loadOutputFiles();
+setStatus('就绪', 'idle');
+// 启动时检查后端可达性，不可达则醒目提示
+recheckBackend();
+// 页面重新可见时（如从后台切回）再次确认连接
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && S.status !== 'processing'){
+    recheckBackend();
+  }
+});
 </script>
 </body>
 </html>
