@@ -26,7 +26,7 @@ if not defined PYTHON_CMD (
 )
 
 if not exist ".venv\Scripts\python.exe" (
-	echo [1/4] 首次运行，正在创建虚拟环境 .venv ...
+	echo [1/3] 首次运行，正在创建虚拟环境 .venv ...
 	call %PYTHON_CMD% -m venv .venv
 	if errorlevel 1 (
 		echo [错误] 创建虚拟环境失败，请检查 Python 安装是否完整。
@@ -36,7 +36,7 @@ if not exist ".venv\Scripts\python.exe" (
 	)
 )
 
-echo [2/4] 正在升级 pip ...
+echo [2/3] 正在升级 pip ...
 call .venv\Scripts\python.exe -m pip install --upgrade pip
 if errorlevel 1 (
 	echo [错误] pip 升级失败。
@@ -45,25 +45,16 @@ if errorlevel 1 (
 	exit /b 1
 )
 
-echo [3/4] 正在安装 PyInstaller ...
-call .venv\Scripts\python.exe -m pip install pyinstaller
+echo [3/3] 正在安装/更新依赖 ...
+call .venv\Scripts\python.exe -m pip install -r requirements.txt
 if errorlevel 1 (
-	echo [错误] 安装 PyInstaller 失败，请检查网络或镜像源。
-	echo.
-	pause
-	exit /b 1
-)
-
-echo [4/4] 正在打包 EXE ...
-call .venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --onefile --name AI审稿工具 run_desktop.py
-if errorlevel 1 (
-	echo [错误] EXE 打包失败。
+	echo [错误] 依赖安装失败，请检查网络或镜像源配置。
 	echo.
 	pause
 	exit /b 1
 )
 
 echo.
-echo 打包完成。
-echo EXE 输出目录：%CD%\dist
+echo 依赖安装完成。
+
 pause

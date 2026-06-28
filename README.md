@@ -24,13 +24,16 @@ http://localhost:8010/
 ## 二、桌面方式启动
 直接运行：
 ```text
-start_desktop.bat
+启动工具.bat
 ```
 或：
 ```bash
 python run_desktop.py
 ```
-说明：会自动寻找可用端口，并自动打开浏览器。
+说明：
+- `启动工具.bat` 会优先启动 `dist\AI审稿工具.exe`（无需 Python）。
+- 若未检测到 EXE，则自动回退到源码模式（需要 `.venv` 和依赖）。
+- 源码模式会自动寻找可用端口并打开浏览器。
 
 ## 三、打包成 EXE
 直接运行：
@@ -60,4 +63,18 @@ dist\AI审稿工具.exe
 ```text
 启动工具.bat
 ```
-说明：`启动工具.bat` 会调用 `run_desktop.py`，自动寻找可用端口并自动打开浏览器。
+环境诊断：
+```text
+环境自检.bat
+```
+说明：脚本已精简，常用入口为：`安装依赖.bat`、`启动工具.bat`、`环境自检.bat`、`build_exe.bat`。
+
+## 六、一键自检说明
+`环境自检.bat` 会检查：
+- 关键文件是否存在（`requirements.txt`、`run_desktop.py`）
+- Python 是否可用、`.venv` 是否存在
+- 核心依赖是否可导入（fastapi / uvicorn / python-docx）
+- 是否已生成 EXE（`dist\\AI审稿工具.exe`）
+- 常用端口是否占用（8010、8011、11434）
+
+输出结果会按“通过 / 警告 / 失败”汇总，并给出下一步建议。
