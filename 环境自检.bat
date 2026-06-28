@@ -14,8 +14,13 @@ call :check_file "run_desktop.py" "桌面入口 run_desktop.py"
 
 set "PYTHON_CMD="
 if exist ".venv\Scripts\python.exe" (
-    set "PYTHON_CMD=.venv\Scripts\python.exe"
-    call :ok "已检测到虚拟环境 Python: .venv\\Scripts\\python.exe"
+    call .venv\Scripts\python.exe --version >nul 2>nul
+    if errorlevel 1 (
+        call :warn "检测到 .venv，但虚拟环境不可用（可能来自其他电脑拷贝）"
+    ) else (
+        set "PYTHON_CMD=.venv\Scripts\python.exe"
+        call :ok "已检测到可用虚拟环境 Python: .venv\\Scripts\\python.exe"
+    )
 ) else (
     py -3 --version >nul 2>nul
     if not errorlevel 1 set "PYTHON_CMD=py -3"
@@ -36,11 +41,16 @@ if defined PYTHON_CMD (
 )
 
 if exist ".venv\Scripts\python.exe" (
-    call .venv\Scripts\python.exe -c "import fastapi,uvicorn,docx" >nul 2>nul
+    call .venv\Scripts\python.exe --version >nul 2>nul
     if errorlevel 1 (
-        call :warn "虚拟环境依赖不完整（fastapi/uvicorn/python-docx 可能缺失）"
+        call :warn "已跳过依赖导入检查（当前 .venv 不可用）"
     ) else (
-        call :ok "核心依赖检查通过（fastapi/uvicorn/python-docx）"
+        call .venv\Scripts\python.exe -c "import fastapi,uvicorn,docx" >nul 2>nul
+        if errorlevel 1 (
+            call :warn "虚拟环境依赖不完整（fastapi/uvicorn/python-docx 可能缺失）"
+        ) else (
+            call :ok "核心依赖检查通过（fastapi/uvicorn/python-docx）"
+        )
     )
 )
 

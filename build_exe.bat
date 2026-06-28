@@ -3,9 +3,16 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 set "PYTHON_CMD="
+set "REBUILD_VENV=0"
 
 if exist ".venv\Scripts\python.exe" (
-	set "PYTHON_CMD=.venv\Scripts\python.exe"
+	call .venv\Scripts\python.exe --version >nul 2>nul
+	if errorlevel 1 (
+		echo [警告] 检测到 .venv，但当前虚拟环境不可用（可能来自其他电脑拷贝）。
+		set "REBUILD_VENV=1"
+	) else (
+		set "PYTHON_CMD=.venv\Scripts\python.exe"
+	)
 )
 
 if not defined PYTHON_CMD (
@@ -23,6 +30,11 @@ if not defined PYTHON_CMD (
 	echo.
 	pause
 	exit /b 1
+)
+
+if "%REBUILD_VENV%"=="1" (
+	echo [信息] 正在重建虚拟环境 .venv ...
+	rmdir /s /q .venv >nul 2>nul
 )
 
 if not exist ".venv\Scripts\python.exe" (

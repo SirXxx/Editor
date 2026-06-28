@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+# In PyInstaller onefile mode, __file__ points to a temporary unpack dir.
+# Use the executable directory so data/config paths remain stable and portable.
+if getattr(sys, "frozen", False):
+    PROJECT_ROOT = Path(sys.executable).resolve().parent
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _to_abs_path(value: str | Path) -> Path:

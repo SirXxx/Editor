@@ -1,0 +1,5 @@
+# Optional OCR dependencies (may be unavailable on some Python versions/platforms)
+# PaddlePaddle wheels are commonly unavailable for Python 3.12+ on Windows.
+# Recommended Python for OCR: 3.10 or 3.11.
+paddleocr>=2.7.0.3
+paddlepaddle>=2.6.1; python_version < "3.12"

@@ -1,0 +1,3 @@
+# Optional table extraction dependencies
+# camelot may fail on some systems due to external runtime/toolchain differences.
+camelot-py>=0.11.0
